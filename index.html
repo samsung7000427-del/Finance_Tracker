@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>บัญชีครอบครัว</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,7 +20,12 @@
     --purple:#6C5CE7; --border:#F3E9DE;
   }
   *{box-sizing:border-box;}
-  body{ background:var(--bg); color:var(--ink); font-family:'Noto Sans Thai',sans-serif; -webkit-font-smoothing:antialiased; }
+  html{ touch-action: manipulation; } /* ปิดการซูมจากการแตะสองครั้งเร็วๆ ทั้งหน้า กันซูมเพี้ยนตอนกดถี่ๆ */
+  body{ background:var(--bg); color:var(--ink); font-family:'Noto Sans Thai',sans-serif; -webkit-font-smoothing:antialiased; overscroll-behavior-y:none; padding-bottom:env(safe-area-inset-bottom); }
+  button, a, .tap-scale, input, select, textarea{ touch-action: manipulation; }
+  /* บังคับขนาดตัวอักษรในช่องกรอกให้ >=16px กัน iOS Safari ซูมเข้าอัตโนมัติตอนแตะช่องกรอก */
+  input, select, textarea{ font-size:16px !important; }
+  .pill-scroll{ -webkit-overflow-scrolling:touch; overscroll-behavior-x:contain; }
   .font-display{font-family:'Kanit',sans-serif;}
   .font-num{font-family:'Kanit',sans-serif; font-weight:600;}
   .scrollbar-none::-webkit-scrollbar{display:none;}
@@ -71,7 +76,7 @@
   <div class="bg-[var(--card)] w-full sm:max-w-xs sm:rounded-3xl rounded-t-3xl p-6 rise-in">
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-3">
-        <div id="pinAvatar" class="w-11 h-11 rounded-2xl flex items-center justify-center font-display font-bold text-white text-lg"></div>
+        <div id="pinAvatar" class="w-11 h-11 rounded-2xl overflow-hidden flex items-center justify-center font-display font-bold text-white text-lg"></div>
         <div class="font-semibold" id="pinUserName"></div>
       </div>
       <button onclick="closePinModal()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
@@ -97,7 +102,7 @@
       </div>
       <div class="flex items-center gap-2">
         <button onclick="openSettings()" class="w-8 h-8 rounded-full flex items-center justify-center text-white/85 hover:bg-white/15 tap-scale"><span class="icon-sw w-[18px] h-[18px]" data-lucide="settings"></span></button>
-        <button onclick="switchUser()" id="userChip" class="tap-scale w-8 h-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-white border-2 border-white/50"></button>
+        <button onclick="switchUser()" id="userChip" class="tap-scale w-8 h-8 rounded-full overflow-hidden flex items-center justify-center font-display font-bold text-sm text-white border-2 border-white/50"></button>
       </div>
     </div>
     <div class="max-w-2xl mx-auto px-4 pb-3 flex items-center justify-between gap-2">
@@ -106,10 +111,10 @@
         <button data-mode="month" onclick="setPeriodMode('month')" class="period-tab px-3 py-1.5 rounded-full text-white/70">เดือน</button>
         <button data-mode="year" onclick="setPeriodMode('year')" class="period-tab px-3 py-1.5 rounded-full text-white/70">ปี</button>
       </div>
-      <div class="flex items-center gap-1 text-white">
-        <button onclick="navigatePeriod(-1)" class="w-7 h-7 flex items-center justify-center tap-scale"><span class="icon-sw w-4 h-4" data-lucide="chevron-left"></span></button>
-        <span id="periodLabel" class="text-xs font-medium min-w-[92px] text-center"></span>
-        <button onclick="navigatePeriod(1)" class="w-7 h-7 flex items-center justify-center tap-scale"><span class="icon-sw w-4 h-4" data-lucide="chevron-right"></span></button>
+      <div class="flex items-center gap-0.5 text-white">
+        <button onclick="navigatePeriod(-1)" class="w-9 h-9 flex items-center justify-center tap-scale shrink-0"><span class="icon-sw w-4 h-4" data-lucide="chevron-left"></span></button>
+        <span id="periodLabel" class="text-xs font-medium min-w-[86px] text-center px-0.5"></span>
+        <button onclick="navigatePeriod(1)" class="w-9 h-9 flex items-center justify-center tap-scale shrink-0"><span class="icon-sw w-4 h-4" data-lucide="chevron-right"></span></button>
       </div>
     </div>
     <!-- Member tabs: keeps each person's data separate -->
@@ -210,6 +215,9 @@
       <h2 class="font-display font-bold text-lg" id="txnModalTitle">เพิ่มรายการ</h2>
       <button onclick="closeTxnModal()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
     </div>
+    <button id="switchToBatchBtn" onclick="openBatchModal()" class="tap-scale mx-5 mb-1 px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 w-[calc(100%-2.5rem)]" style="background:var(--accent-light); color:#96721A">
+      <span class="icon-sw w-3.5 h-3.5" data-lucide="list-plus"></span> สลับไปกรอกย้อนหลังหลายรายการทีเดียว
+    </button>
     <div class="p-5 pt-2 space-y-4">
       <input type="hidden" id="txnId">
       <div class="flex bg-[var(--bg)] rounded-2xl p-1">
@@ -234,17 +242,43 @@
         </div>
         <div>
           <label class="text-xs text-[var(--ink-soft)] mb-1 block">บันทึกโดย</label>
-          <select id="txnUser" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"></select>
+          <div id="txnOwnerChip" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 flex items-center gap-2 bg-[var(--bg)]">
+            <span id="txnOwnerAvatar" class="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-[10px] font-display font-bold text-white shrink-0"></span>
+            <span id="txnOwnerName" class="text-sm truncate"></span>
+          </div>
         </div>
       </div>
+      <p class="text-[10px] text-[var(--ink-faint)] -mt-2">รายการนี้จะถูกบันทึกเป็นของคุณเท่านั้น เพื่อกันการบันทึกผิดคน</p>
       <div>
         <label class="text-xs text-[var(--ink-soft)] mb-1 block">โน้ต (ไม่บังคับ)</label>
         <input type="text" id="txnNote" placeholder="เช่น ข้าวเที่ยงกับเพื่อน" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]">
       </div>
       <div class="flex gap-2 pt-1">
         <button id="txnDeleteBtn" onclick="deleteCurrentTxn()" class="hidden tap-scale px-4 py-3 rounded-2xl border-2 text-sm font-semibold" style="border-color:var(--expense); color:var(--expense)">ลบ</button>
-        <button onclick="saveTxn()" class="tap-scale flex-1 py-3 rounded-2xl text-white font-semibold" style="background:var(--primary);">บันทึกรายการ</button>
+        <button onclick="saveTxn(this)" class="tap-scale flex-1 py-3 rounded-2xl text-white font-semibold" style="background:var(--primary);">บันทึกรายการ</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= BATCH BACKFILL ENTRY MODAL ============================= -->
+<div id="batchModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-end sm:items-center justify-center">
+  <div class="bg-[var(--card)] w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[92vh] flex flex-col rise-in">
+    <div class="p-5 pb-2 flex items-center justify-between shrink-0">
+      <div>
+        <h2 class="font-display font-bold text-lg">กรอกย้อนหลังหลายรายการ</h2>
+        <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">เพิ่มได้ทีละหลายแถว เหมาะกับการตามกรอกรายการเก่า</p>
+      </div>
+      <button onclick="closeBatchModal()" class="text-[var(--ink-soft)] shrink-0"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
+    </div>
+    <div id="batchRowsWrap" class="px-5 py-2 space-y-3 overflow-y-auto scrollbar-none flex-1"></div>
+    <div class="px-5 pb-2 shrink-0">
+      <button onclick="addBatchRow()" class="tap-scale w-full py-2.5 rounded-2xl border-2 border-dashed border-[var(--ink-faint)] text-sm text-[var(--ink-soft)] flex items-center justify-center gap-2">
+        <span class="icon-sw w-4 h-4" data-lucide="plus"></span> เพิ่มแถว
+      </button>
+    </div>
+    <div class="p-5 pt-3 shrink-0 border-t border-[var(--border)]">
+      <button onclick="submitBatchRows(this)" id="batchSubmitBtn" class="tap-scale w-full py-3 rounded-2xl text-white font-semibold" style="background:var(--primary);">บันทึกทั้งหมด</button>
     </div>
   </div>
 </div>
@@ -314,7 +348,7 @@
       </div>
       <div class="flex gap-2 pt-1">
         <button id="catDeleteBtn" onclick="deleteCurrentCategory()" class="hidden tap-scale px-4 py-2.5 rounded-2xl border-2 text-sm font-semibold" style="border-color:var(--expense); color:var(--expense)">ลบ</button>
-        <button onclick="saveCategory()" class="tap-scale flex-1 py-2.5 rounded-2xl text-white font-semibold text-sm" style="background:var(--primary);">บันทึก</button>
+        <button onclick="saveCategory(this)" class="tap-scale flex-1 py-2.5 rounded-2xl text-white font-semibold text-sm" style="background:var(--primary);">บันทึก</button>
       </div>
     </div>
   </div>
@@ -329,18 +363,37 @@
     </div>
     <input type="hidden" id="userId">
     <div class="space-y-4">
-      <div class="flex justify-center">
-        <div id="userAvatarPreview" class="w-16 h-16 rounded-3xl flex items-center justify-center text-3xl font-display font-bold text-white"></div>
+      <div class="flex flex-col items-center gap-2">
+        <div id="userAvatarPreview" class="w-20 h-20 rounded-3xl overflow-hidden flex items-center justify-center text-3xl font-display font-bold text-white"></div>
+        <div class="flex items-center gap-2">
+          <label class="tap-scale cursor-pointer px-3 py-1.5 rounded-full text-[11px] font-semibold border border-[var(--border)] flex items-center gap-1" style="color:var(--primary-dark)">
+            <span class="icon-sw w-3.5 h-3.5" data-lucide="camera"></span> แนบรูปโปรไฟล์
+            <input type="file" id="userPhotoInput" accept="image/*" class="hidden" onchange="handlePhotoSelect(event)">
+          </label>
+          <button type="button" id="removePhotoBtn" onclick="removeUserPhoto()" class="hidden tap-scale px-3 py-1.5 rounded-full text-[11px] font-semibold border" style="border-color:var(--expense); color:var(--expense)">ลบรูป</button>
+        </div>
+        <p class="text-[10px] text-[var(--ink-faint)]">ไม่แนบรูปก็ใช้อิโมจิหรือตัวอักษรแทนได้</p>
       </div>
       <input type="text" id="userName" placeholder="ชื่อสมาชิก" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]">
       <input type="text" id="userPin" placeholder="PIN 4 หลัก" maxlength="4" inputmode="numeric" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)] font-num">
       <div>
-        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">สีพื้นหลังโปรไฟล์</label>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">รูปทรงกรอบ</label>
+        <div class="flex bg-[var(--bg)] rounded-2xl p-1 w-40">
+          <button type="button" onclick="setUserFormShape('square')" id="shapeSquareBtn" class="flex-1 py-1.5 rounded-xl text-xs font-semibold">สี่เหลี่ยม</button>
+          <button type="button" onclick="setUserFormShape('circle')" id="shapeCircleBtn" class="flex-1 py-1.5 rounded-xl text-xs font-semibold">วงกลม</button>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">สีพื้นหลัง</label>
         <div id="userColorPicker" class="flex flex-wrap gap-2"></div>
       </div>
       <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">พื้นหลังไล่สี (เลือกแทนสีทึบก็ได้)</label>
+        <div id="userGradientPicker" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div>
         <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">อิโมจิประจำตัว (ไม่เลือกก็ได้)</label>
-        <div id="userEmojiPicker" class="grid grid-cols-7 gap-1.5"></div>
+        <div id="userEmojiPicker" class="grid grid-cols-7 gap-1.5 max-h-40 overflow-y-auto scrollbar-none"></div>
       </div>
       <div>
         <label class="text-xs text-[var(--ink-soft)] mb-1 block flex items-center gap-1.5"><span class="icon-sw w-3.5 h-3.5" data-lucide="target"></span>ลิมิตรายจ่ายต่อเดือน (ไม่บังคับ)</label>
@@ -374,7 +427,7 @@
 
 <script>
 /* CONFIG — ใส่ Web App URL ของ Google Apps Script ที่นี่หลัง Deploy เสร็จ */
-const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycby8CbFHJH77gWU0nX7OOIhFy1EpMoTh1GlJ-ymI24ZFXAl8CKDp333AQJ-A23hvq5TAIw/exec' };
+const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycby8B97dVkbGlErSeyqNQFLAaVTqvbel4Ian209TTujkGZaluuGTgpAgjgGSeJSJuHJIqg/exec' };
 
 let state = {
   users: [], categories: [], transactions: [],
@@ -384,14 +437,17 @@ let state = {
   pendingLoginUser: null, pinBuffer: '',
   txnType: 'expense', selectedCategoryId: null,
   catFormType: 'expense', catFormColor: '', catFormIcon: '',
-  userFormColor: '', userFormEmoji: '',
+  userFormColor: '', userFormEmoji: '', userFormShape: 'square',
+  userFormPhotoData: '', userFormPhotoMime: '', userFormPhotoUrl: '', userFormRemovePhoto: false,
   settingsTab: 'categories',
-  donutChart: null, trendChart: null
+  donutChart: null, trendChart: null,
+  batchRows: [], batchRowSeq: 0
 };
 
 const PALETTE = ['#FF6B6B','#FFA94D','#FFC145','#6C5CE7','#A66DD4','#FF7EB6','#4D96FF','#2EC4B6','#20BF6B','#495867','#F76E11','#00B8A9'];
+const GRADIENTS = ['linear-gradient(135deg,#FF9A8B,#FF6A88)','linear-gradient(135deg,#A18CD1,#FBC2EB)','linear-gradient(135deg,#84FAB0,#8FD3F4)','linear-gradient(135deg,#FCCF31,#F55555)','linear-gradient(135deg,#43E97B,#38F9D7)','linear-gradient(135deg,#4FACFE,#00F2FE)','linear-gradient(135deg,#FA709A,#FEE140)','linear-gradient(135deg,#667EEA,#764BA2)'];
 const CAT_ICONS = ['utensils','car','home','shopping-bag','heart-pulse','film','book-open','wallet','gift','trending-up','briefcase','more-horizontal','coffee','gamepad-2','plane','phone','pill','circle'];
-const EMOJI_OPTIONS = ['😀','😎','🥳','🥰','😺','🐶','🦊','🐼','🐰','🦁','🐸','🐵','🦄','🐯','🌸','🌈','⭐','🍀','🎈','☀️','🌙','💎','👑','🎨','⚽','🎮','📚','☕','🚀','❤️','🍕','🌻'];
+const EMOJI_OPTIONS = ['😀','😎','🥳','🥰','😇','🤓','🥸','🧑‍🍳','🧑‍💼','🧑‍🎓','👶','🧓','😺','🐶','🦊','🐼','🐰','🦁','🐸','🐵','🦄','🐯','🐨','🐷','🐔','🦉','🐢','🌸','🌈','⭐','🍀','🎈','☀️','🌙','💎','👑','🎨','⚽','🎮','📚','☕','🚀','❤️','🍕','🌻','🍩','🎵','⚡','🔥'];
 const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
 const THAI_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
@@ -442,12 +498,17 @@ async function apiPost(payload) {
 /* ========================= LOGIN ========================= */
 function initials(name) { return (name || '?').trim().charAt(0).toUpperCase(); }
 function avatarContent(u) { return u.icon ? u.icon : initials(u.name); }
+function avatarInnerHTML(u) {
+  if (u && u.photoUrl) return `<img src="${u.photoUrl}" class="w-full h-full" style="object-fit:cover; border-radius:inherit" onerror="this.remove();this.parentNode.textContent='${avatarContent(u)}';">`;
+  return escapeHtml(avatarContent(u));
+}
+function shapeRadius(shape) { return shape === 'circle' ? '9999px' : '22%'; }
 
 function renderUserTiles() {
   const wrap = document.getElementById('userTiles');
   wrap.innerHTML = state.users.map(u => `
     <button onclick='openPinModal(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="tap-scale flex flex-col items-center gap-1.5">
-      <div class="w-16 h-16 rounded-3xl flex items-center justify-center text-2xl font-display font-bold text-white soft-shadow" style="background:${u.color || '#2EC4B6'}">${avatarContent(u)}</div>
+      <div class="w-16 h-16 overflow-hidden flex items-center justify-center text-2xl font-display font-bold text-white soft-shadow" style="background:${u.color || '#2EC4B6'}; border-radius:${shapeRadius(u.shape)}">${avatarInnerHTML(u)}</div>
       <span class="text-xs text-[var(--ink-soft)] truncate max-w-[70px]">${escapeHtml(u.name)}</span>
     </button>`).join('');
   document.getElementById('loginStatus').textContent = state.users.length === 0 ? 'ยังไม่มีสมาชิก กด "เพิ่มสมาชิกใหม่" เพื่อเริ่มต้น' : '';
@@ -456,7 +517,8 @@ function renderUserTiles() {
 function openPinModal(user) {
   state.pendingLoginUser = user; state.pinBuffer = '';
   document.getElementById('pinAvatar').style.background = user.color || '#2EC4B6';
-  document.getElementById('pinAvatar').textContent = avatarContent(user);
+  document.getElementById('pinAvatar').style.borderRadius = shapeRadius(user.shape);
+  document.getElementById('pinAvatar').innerHTML = avatarInnerHTML(user);
   document.getElementById('pinUserName').textContent = user.name;
   document.getElementById('pinError').classList.add('hidden');
   updatePinDots();
@@ -496,7 +558,7 @@ function loginAs(user) {
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
   const chip = document.getElementById('userChip');
-  chip.style.background = user.color || '#2EC4B6'; chip.textContent = avatarContent(user);
+  chip.style.background = user.color || '#2EC4B6'; chip.style.borderRadius = shapeRadius(user.shape); chip.innerHTML = avatarInnerHTML(user);
   refreshFromServer(true).then(renderAll);
   renderAll();
 }
@@ -516,8 +578,12 @@ function openAddUserForm() {
   document.getElementById('userDeleteBtn').classList.add('hidden');
   document.getElementById('userFormError').classList.add('hidden');
   state.userFormColor = PALETTE[state.users.length % PALETTE.length];
-  state.userFormEmoji = '';
-  renderUserColorPicker(); renderUserEmojiPicker(); updateAvatarPreview();
+  state.userFormEmoji = ''; state.userFormShape = 'square';
+  state.userFormPhotoData = ''; state.userFormPhotoMime = ''; state.userFormPhotoUrl = ''; state.userFormRemovePhoto = false;
+  document.getElementById('userPhotoInput').value = '';
+  document.getElementById('removePhotoBtn').classList.add('hidden');
+  setUserFormShape('square');
+  renderUserColorPicker(); renderUserGradientPicker(); renderUserEmojiPicker(); updateAvatarPreview();
   document.getElementById('userFormModal').classList.remove('hidden');
 }
 function openEditUserForm(user) {
@@ -528,22 +594,81 @@ function openEditUserForm(user) {
   document.getElementById('userDeleteBtn').classList.remove('hidden');
   document.getElementById('userFormError').classList.add('hidden');
   state.userFormColor = user.color; state.userFormEmoji = user.icon || '';
-  renderUserColorPicker(); renderUserEmojiPicker(); updateAvatarPreview();
+  state.userFormPhotoData = ''; state.userFormPhotoMime = ''; state.userFormPhotoUrl = user.photoUrl || ''; state.userFormRemovePhoto = false;
+  document.getElementById('userPhotoInput').value = '';
+  document.getElementById('removePhotoBtn').classList.toggle('hidden', !state.userFormPhotoUrl);
+  setUserFormShape(user.shape || 'square');
+  renderUserColorPicker(); renderUserGradientPicker(); renderUserEmojiPicker(); updateAvatarPreview();
   document.getElementById('userFormModal').classList.remove('hidden');
 }
 function closeUserForm() { document.getElementById('userFormModal').classList.add('hidden'); }
 function updateAvatarPreview() {
   const el = document.getElementById('userAvatarPreview');
+  el.style.borderRadius = shapeRadius(state.userFormShape);
+  const photoSrc = state.userFormPhotoData ? ('data:' + state.userFormPhotoMime + ';base64,' + state.userFormPhotoData) : state.userFormPhotoUrl;
+  if (photoSrc && !state.userFormRemovePhoto) {
+    el.style.background = state.userFormColor;
+    el.innerHTML = `<img src="${photoSrc}" class="w-full h-full" style="object-fit:cover">`;
+    return;
+  }
   el.style.background = state.userFormColor;
   const name = document.getElementById('userName').value;
   el.textContent = state.userFormEmoji || initials(name);
+}
+
+// อ่านไฟล์รูปที่เลือก ย่อขนาดด้วย canvas ให้เล็กลง (สูงสุด 300px) แล้วแปลงเป็น base64 JPEG
+// ก่อนส่งขึ้นเซิร์ฟเวอร์ เพื่อให้อัปโหลดเร็วและไม่กินพื้นที่มาก
+function handlePhotoSelect(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { showToast('กรุณาเลือกไฟล์รูปภาพ', 'var(--expense)'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      const size = 300;
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const scale = Math.max(size / img.width, size / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      state.userFormPhotoData = dataUrl.split(',')[1];
+      state.userFormPhotoMime = 'image/jpeg';
+      state.userFormRemovePhoto = false;
+      document.getElementById('removePhotoBtn').classList.remove('hidden');
+      updateAvatarPreview();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function removeUserPhoto() {
+  state.userFormPhotoData = ''; state.userFormPhotoMime = ''; state.userFormRemovePhoto = true;
+  document.getElementById('userPhotoInput').value = '';
+  document.getElementById('removePhotoBtn').classList.add('hidden');
+  updateAvatarPreview();
 }
 document.addEventListener('input', (e) => { if (e.target && e.target.id === 'userName') updateAvatarPreview(); });
 
 function renderUserColorPicker() {
   document.getElementById('userColorPicker').innerHTML = PALETTE.map(c => `
-    <button type="button" onclick="state.userFormColor='${c}'; renderUserColorPicker(); updateAvatarPreview();" class="tap-scale w-8 h-8 rounded-full" style="background:${c}; ${state.userFormColor===c?'box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ink);':''}"></button>
+    <button type="button" onclick="state.userFormColor='${c}'; renderUserColorPicker(); renderUserGradientPicker(); updateAvatarPreview();" class="tap-scale w-8 h-8 rounded-full" style="background:${c}; ${state.userFormColor===c?'box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ink);':''}"></button>
   `).join('');
+}
+function renderUserGradientPicker() {
+  document.getElementById('userGradientPicker').innerHTML = GRADIENTS.map(g => `
+    <button type="button" onclick="state.userFormColor='${g.replace(/'/g,"\\'")}'; renderUserColorPicker(); renderUserGradientPicker(); updateAvatarPreview();" class="tap-scale w-8 h-8 rounded-full" style="background:${g}; ${state.userFormColor===g?'box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ink);':''}"></button>
+  `).join('');
+}
+function setUserFormShape(shape) {
+  state.userFormShape = shape;
+  document.getElementById('shapeSquareBtn').style.background = shape==='square' ? 'var(--primary)' : 'transparent';
+  document.getElementById('shapeSquareBtn').style.color = shape==='square' ? '#fff' : 'var(--ink-soft)';
+  document.getElementById('shapeCircleBtn').style.background = shape==='circle' ? 'var(--primary)' : 'transparent';
+  document.getElementById('shapeCircleBtn').style.color = shape==='circle' ? '#fff' : 'var(--ink-soft)';
+  updateAvatarPreview();
 }
 function renderUserEmojiPicker() {
   const noneBtn = `<button type="button" onclick="state.userFormEmoji=''; renderUserEmojiPicker(); updateAvatarPreview();" class="tap-scale w-9 h-9 rounded-xl flex items-center justify-center text-xs font-num" style="background:${state.userFormEmoji===''?'var(--primary)':'var(--bg)'}; color:${state.userFormEmoji===''?'#fff':'var(--ink-soft)'}">Aa</button>`;
@@ -553,32 +678,49 @@ function renderUserEmojiPicker() {
   document.getElementById('userEmojiPicker').innerHTML = noneBtn + emojiBtns;
 }
 
-async function saveUser() {
+async function saveUser(btn) {
   const id = document.getElementById('userId').value;
   const name = document.getElementById('userName').value.trim();
   const pin = document.getElementById('userPin').value.trim();
-  const monthlyLimit = document.getElementById('userMonthlyLimit').value;
+  const monthlyLimit = Number(document.getElementById('userMonthlyLimit').value) || 0;
   const errEl = document.getElementById('userFormError');
   if (!name) { errEl.textContent = 'กรุณาระบุชื่อ'; errEl.classList.remove('hidden'); return; }
   if (!id && !/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN ต้องเป็นตัวเลข 4 หลัก'; errEl.classList.remove('hidden'); return; }
   if (pin && !/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN ต้องเป็นตัวเลข 4 หลัก'; errEl.classList.remove('hidden'); return; }
+  setBtnLoading(btn, true, 'กำลังบันทึก...');
   try {
-    const payload = { action: id ? 'updateUser' : 'addUser', id, name, pin, color: state.userFormColor, icon: state.userFormEmoji, monthlyLimit: monthlyLimit || 0 };
+    const payload = { action: id ? 'updateUser' : 'addUser', id, name, pin, color: state.userFormColor, icon: state.userFormEmoji, shape: state.userFormShape, monthlyLimit,
+      photoBase64: state.userFormPhotoData || '', photoMime: state.userFormPhotoMime || '', removePhoto: state.userFormRemovePhoto };
     const res = await apiPost(payload);
-    if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); return; }
+    if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); setBtnLoading(btn,false); return; }
+    const photoUrl = res.photoUrl || '';
+    if (id) {
+      const idx = state.users.findIndex(u => u.id === id);
+      if (idx > -1) state.users[idx] = { ...state.users[idx], name, color: state.userFormColor, icon: state.userFormEmoji, shape: state.userFormShape, monthlyLimit, photoUrl };
+      if (state.currentUser && state.currentUser.id === id) state.currentUser = state.users[idx];
+    } else {
+      state.users.push({ id: res.id, name, color: state.userFormColor, icon: state.userFormEmoji, shape: state.userFormShape, monthlyLimit, photoUrl });
+    }
+    saveCacheLocal();
     closeUserForm();
-    await refreshFromServer(true);
     renderUserTiles();
-    if (state.currentUser) { renderSettingsUsers(); renderMemberTabs(); renderAll(); }
+    if (state.currentUser) {
+      const chip = document.getElementById('userChip');
+      chip.style.background = state.currentUser.color || '#2EC4B6'; chip.style.borderRadius = shapeRadius(state.currentUser.shape); chip.innerHTML = avatarInnerHTML(state.currentUser);
+      renderSettingsUsers(); renderMemberTabs(); renderAll();
+    }
     showToast('บันทึกโปรไฟล์แล้ว', 'var(--primary-dark)');
   } catch (e) { errEl.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ'; errEl.classList.remove('hidden'); }
+  setBtnLoading(btn, false);
 }
 function deleteCurrentUser() {
   const id = document.getElementById('userId').value;
   confirmAction('ลบสมาชิกคนนี้ใช่หรือไม่?', async () => {
     const res = await apiPost({ action: 'deleteUser', id });
     if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
-    closeUserForm(); await refreshFromServer(true); renderUserTiles(); renderSettingsUsers();
+    state.users = state.users.filter(u => u.id !== id);
+    saveCacheLocal();
+    closeUserForm(); renderUserTiles(); renderSettingsUsers();
     if (state.currentUser) { renderMemberTabs(); renderAll(); }
     showToast('ลบสมาชิกแล้ว', 'var(--primary-dark)');
   });
@@ -855,16 +997,19 @@ function renderTxnList(listId, emptyId, txns, showAllTag) {
     const rows = items.map(t => {
       const cat = state.categories.find(c => c.ID === t.CategoryID);
       const user = state.users.find(u => u.id === t.UserID);
-      return `<button onclick='openEditTxn(${JSON.stringify(t).replace(/'/g,"&#39;")})' class="tap-scale w-full flex items-center gap-3 py-2.5 px-2 rounded-2xl text-left hover:bg-[var(--bg)]">
+      const isMine = state.currentUser && String(t.UserID) === String(state.currentUser.id);
+      const tag = isMine ? 'button' : 'div';
+      const attrs = isMine ? `onclick='openEditTxn(${JSON.stringify(t).replace(/'/g,"&#39;")})'` : '';
+      return `<${tag} ${attrs} class="${isMine?'tap-scale hover:bg-[var(--bg)]':'opacity-80'} w-full flex items-center gap-3 py-2.5 px-2 rounded-2xl text-left">
         <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 icon-sw" style="background:${cat?cat.Color+'22':'#eee'}; color:${cat?cat.Color:'#999'}">
           <span class="w-4 h-4" data-lucide="${cat?cat.Icon:'circle'}"></span>
         </div>
         <div class="flex-1 min-w-0">
           <div class="text-sm font-medium truncate">${escapeHtml(cat?cat.Name:'ไม่ระบุหมวดหมู่')}</div>
-          <div class="text-[11px] text-[var(--ink-faint)] truncate">${t.Note ? escapeHtml(t.Note)+' · ' : ''}${showAllTag && user ? escapeHtml(user.name) : ''}</div>
+          <div class="text-[11px] text-[var(--ink-faint)] truncate flex items-center gap-1">${t.Note ? escapeHtml(t.Note)+' · ' : ''}${showAllTag && user ? escapeHtml(user.name) : ''}${!isMine ? '<span class="icon-sw w-2.5 h-2.5 inline-block align-middle" data-lucide="lock"></span>' : ''}</div>
         </div>
         <div class="font-num font-semibold text-sm shrink-0" style="color:${t.Type==='income'?'var(--income)':'var(--expense)'}">${t.Type==='income'?'+':'-'}${fmtMoney(Number(t.Amount))}</div>
-      </button>`;
+      </${tag}>`;
     }).join('');
 
     return `<div class="pt-3">
@@ -889,7 +1034,7 @@ function renderAllMembersView() {
     const toneColor = tone==='positive' ? 'var(--income)' : tone==='warning' ? 'var(--expense)' : '#96721A';
     return `<button onclick="setViewUser('${u.id}')" class="tap-scale w-full text-left bg-[var(--card)] rounded-3xl soft-shadow p-4 fade-in">
       <div class="flex items-center gap-3 mb-3">
-        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-display font-bold text-white shrink-0" style="background:${u.color}">${avatarContent(u)}</div>
+        <div class="w-11 h-11 overflow-hidden flex items-center justify-center text-xl font-display font-bold text-white shrink-0" style="background:${u.color}; border-radius:${shapeRadius(u.shape)}">${avatarInnerHTML(u)}</div>
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm truncate">${escapeHtml(u.name)}</div>
           <div class="text-[11px] font-num" style="color:var(--primary-dark)">สุทธิ ${fmtMoney(net)}</div>
@@ -920,23 +1065,127 @@ function openTxnModal() {
   document.getElementById('txnId').value = ''; document.getElementById('txnAmount').value = ''; document.getElementById('txnNote').value = '';
   document.getElementById('txnDate').valueAsDate = state.period.mode === 'year' ? new Date() : new Date(state.period.date);
   document.getElementById('txnDeleteBtn').classList.add('hidden');
-  populateUserSelect();
-  document.getElementById('txnUser').value = (state.viewUserId && state.viewUserId !== 'ALL') ? state.viewUserId : state.currentUser.id;
+  document.getElementById('switchToBatchBtn').classList.remove('hidden');
+  setTxnOwnerChip();
   setTxnType('expense');
   document.getElementById('txnModal').classList.remove('hidden');
 }
 function openEditTxn(t) {
+  if (String(t.UserID) !== String(state.currentUser.id)) {
+    showToast('ดูได้อย่างเดียว แก้ไขได้เฉพาะรายการของตัวเองเท่านั้น', 'var(--expense)');
+    return;
+  }
   document.getElementById('txnModalTitle').textContent = 'แก้ไขรายการ';
   document.getElementById('txnId').value = t.ID; document.getElementById('txnAmount').value = t.Amount; document.getElementById('txnNote').value = t.Note || '';
   document.getElementById('txnDate').value = new Date(t.Date).toISOString().slice(0,10);
   document.getElementById('txnDeleteBtn').classList.remove('hidden');
-  populateUserSelect();
-  document.getElementById('txnUser').value = t.UserID;
+  document.getElementById('switchToBatchBtn').classList.add('hidden');
+  setTxnOwnerChip();
   setTxnType(t.Type, t.CategoryID);
   document.getElementById('txnModal').classList.remove('hidden');
 }
+
+/* ========================= BATCH BACKFILL ENTRY (แยกจากการกรอกปกติ) ========================= */
+function openBatchModal() {
+  closeTxnModal();
+  if (state.batchRows.length === 0) addBatchRow();
+  renderBatchRows();
+  document.getElementById('batchModal').classList.remove('hidden');
+}
+function closeBatchModal() { document.getElementById('batchModal').classList.add('hidden'); }
+function newBatchRow(copyFrom) {
+  state.batchRowSeq++;
+  const expenseCats = state.categories.filter(c => c.Type === 'expense');
+  const incomeCats = state.categories.filter(c => c.Type === 'income');
+  const type = copyFrom ? copyFrom.type : 'expense';
+  const cats = type === 'expense' ? expenseCats : incomeCats;
+  return {
+    localId: 'row_' + state.batchRowSeq,
+    date: copyFrom ? copyFrom.date : new Date().toISOString().slice(0,10),
+    type,
+    categoryId: copyFrom ? copyFrom.categoryId : (cats[0] ? cats[0].ID : ''),
+    amount: '', note: ''
+  };
+}
+function addBatchRow() {
+  const last = state.batchRows[state.batchRows.length - 1];
+  state.batchRows.push(newBatchRow(last));
+  renderBatchRows();
+  setTimeout(() => {
+    const wrap = document.getElementById('batchRowsWrap');
+    wrap.scrollTop = wrap.scrollHeight;
+  }, 50);
+}
+function removeBatchRow(localId) {
+  state.batchRows = state.batchRows.filter(r => r.localId !== localId);
+  if (state.batchRows.length === 0) state.batchRows.push(newBatchRow());
+  renderBatchRows();
+}
+function updateBatchField(localId, field, value) {
+  const row = state.batchRows.find(r => r.localId === localId);
+  if (row) row[field] = value;
+}
+function setBatchRowType(localId, type) {
+  const row = state.batchRows.find(r => r.localId === localId);
+  if (!row) return;
+  row.type = type;
+  const cats = state.categories.filter(c => c.Type === type);
+  row.categoryId = cats[0] ? cats[0].ID : '';
+  renderBatchRows();
+}
+function renderBatchRows() {
+  const wrap = document.getElementById('batchRowsWrap');
+  wrap.innerHTML = state.batchRows.map(row => {
+    const cats = state.categories.filter(c => c.Type === row.type);
+    const catOptions = cats.map(c => `<option value="${c.ID}" ${c.ID===row.categoryId?'selected':''}>${escapeHtml(c.Name)}</option>`).join('');
+    return `<div class="rounded-2xl p-3 space-y-2" style="background:var(--bg)">
+      <div class="flex items-center gap-2">
+        <div class="flex bg-[var(--card)] rounded-xl p-0.5 shrink-0">
+          <button type="button" onclick="setBatchRowType('${row.localId}','expense')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold" style="background:${row.type==='expense'?'var(--expense)':'transparent'}; color:${row.type==='expense'?'#fff':'var(--ink-soft)'}">จ่าย</button>
+          <button type="button" onclick="setBatchRowType('${row.localId}','income')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold" style="background:${row.type==='income'?'var(--income)':'transparent'}; color:${row.type==='income'?'#fff':'var(--ink-soft)'}">รับ</button>
+        </div>
+        <input type="date" value="${row.date}" onchange="updateBatchField('${row.localId}','date',this.value)" class="flex-1 min-w-0 border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs outline-none">
+        <button type="button" onclick="removeBatchRow('${row.localId}')" class="shrink-0 w-7 h-7 flex items-center justify-center text-[var(--ink-faint)]"><span class="icon-sw w-4 h-4" data-lucide="trash-2"></span></button>
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <select onchange="updateBatchField('${row.localId}','categoryId',this.value)" class="border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs outline-none">${catOptions}</select>
+        <div class="flex items-center gap-1 border border-[var(--border)] rounded-lg px-2 py-1.5">
+          <span class="font-num text-xs text-[var(--ink-faint)]">฿</span>
+          <input type="number" inputmode="decimal" placeholder="0" value="${row.amount}" onchange="updateBatchField('${row.localId}','amount',this.value)" class="w-full outline-none bg-transparent font-num text-xs">
+        </div>
+      </div>
+      <input type="text" placeholder="โน้ต (ไม่บังคับ)" value="${escapeHtml(row.note)}" onchange="updateBatchField('${row.localId}','note',this.value)" class="w-full border border-[var(--border)] rounded-lg px-2 py-1.5 text-xs outline-none">
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+async function submitBatchRows(btn) {
+  const valid = state.batchRows.filter(r => r.date && r.categoryId && Number(r.amount) > 0);
+  if (valid.length === 0) { showToast('กรอกอย่างน้อย 1 รายการให้ครบ (วันที่ หมวดหมู่ จำนวนเงิน)', 'var(--expense)'); return; }
+  setBtnLoading(btn, true, `กำลังบันทึก ${valid.length} รายการ...`);
+  try {
+    const items = valid.map(r => ({ date: r.date, type: r.type, categoryId: r.categoryId, amount: Number(r.amount), note: r.note || '' }));
+    const res = await apiPost({ action: 'addTransactionsBatch', items, requesterId: state.currentUser.id });
+    if (!res.success) { showToast(res.error, 'var(--expense)'); setBtnLoading(btn, false); return; }
+    const now = new Date().toISOString();
+    items.forEach((it, i) => {
+      state.transactions.push({ ID: res.ids[i], Date: it.date, Type: it.type, CategoryID: it.categoryId, Amount: it.amount, Note: it.note, UserID: state.currentUser.id, CreatedAt: now });
+    });
+    saveCacheLocal();
+    state.batchRows = [];
+    closeBatchModal();
+    renderAll();
+    showToast(`บันทึก ${res.count} รายการแล้ว`, 'var(--primary-dark)');
+  } catch (e) { showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'var(--expense)'); }
+  setBtnLoading(btn, false);
+}
 function closeTxnModal() { document.getElementById('txnModal').classList.add('hidden'); }
-function populateUserSelect() { document.getElementById('txnUser').innerHTML = state.users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join(''); }
+function setTxnOwnerChip() {
+  const u = state.currentUser;
+  document.getElementById('txnOwnerAvatar').style.background = u.color || '#2EC4B6';
+  document.getElementById('txnOwnerAvatar').innerHTML = avatarInnerHTML(u);
+  document.getElementById('txnOwnerName').textContent = u.name;
+}
 
 function setTxnType(type, presetCatId) {
   state.txnType = type;
@@ -958,25 +1207,47 @@ function renderTxnCategoryGrid(cats) {
   lucide.createIcons();
 }
 
-async function saveTxn() {
+async function saveTxn(btn) {
   const id = document.getElementById('txnId').value;
   const amount = parseFloat(document.getElementById('txnAmount').value);
   if (!amount || amount <= 0) { showToast('กรุณาระบุจำนวนเงิน', 'var(--expense)'); return; }
   if (!state.selectedCategoryId) { showToast('กรุณาเลือกหมวดหมู่', 'var(--expense)'); return; }
-  const payload = { action: id ? 'updateTransaction' : 'addTransaction', id, date: document.getElementById('txnDate').value, type: state.txnType, categoryId: state.selectedCategoryId, amount, note: document.getElementById('txnNote').value.trim(), userId: document.getElementById('txnUser').value };
+  const date = document.getElementById('txnDate').value;
+  const note = document.getElementById('txnNote').value.trim();
+  const payload = { action: id ? 'updateTransaction' : 'addTransaction', id, date, type: state.txnType, categoryId: state.selectedCategoryId, amount, note, requesterId: state.currentUser.id };
+  setBtnLoading(btn, true, 'กำลังบันทึก...');
   try {
     const res = await apiPost(payload);
-    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
-    closeTxnModal(); await refreshFromServer(true); renderAll();
+    if (!res.success) { showToast(res.error, 'var(--expense)'); setBtnLoading(btn, false); return; }
+    // อัปเดตหน้าจอทันทีโดยไม่ต้องรอโหลดข้อมูลทั้งหมดใหม่ (เร็วขึ้นมาก)
+    if (id) {
+      const idx = state.transactions.findIndex(t => t.ID === id);
+      if (idx > -1) state.transactions[idx] = { ...state.transactions[idx], Date: date, Type: state.txnType, CategoryID: state.selectedCategoryId, Amount: amount, Note: note };
+    } else {
+      state.transactions.push({ ID: res.id, Date: date, Type: state.txnType, CategoryID: state.selectedCategoryId, Amount: amount, Note: note, UserID: state.currentUser.id, CreatedAt: new Date().toISOString() });
+    }
+    saveCacheLocal();
+    closeTxnModal(); renderAll();
     showToast('บันทึกรายการแล้ว', 'var(--primary-dark)');
   } catch (e) { showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'var(--expense)'); }
+  setBtnLoading(btn, false);
+}
+function setBtnLoading(btn, loading, label) {
+  if (!btn) return;
+  if (loading) { btn.dataset.origText = btn.textContent; btn.textContent = label || 'กำลังบันทึก...'; btn.disabled = true; btn.style.opacity = 0.7; }
+  else { if (btn.dataset.origText) btn.textContent = btn.dataset.origText; btn.disabled = false; btn.style.opacity = 1; }
+}
+function saveCacheLocal() {
+  localStorage.setItem('ledger_cache', JSON.stringify({ users: state.users, categories: state.categories, transactions: state.transactions }));
 }
 function deleteCurrentTxn() {
   const id = document.getElementById('txnId').value;
   confirmAction('ลบรายการนี้ใช่หรือไม่?', async () => {
-    const res = await apiPost({ action: 'deleteTransaction', id });
+    const res = await apiPost({ action: 'deleteTransaction', id, requesterId: state.currentUser.id });
     if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
-    closeTxnModal(); await refreshFromServer(true); renderAll();
+    state.transactions = state.transactions.filter(t => t.ID !== id);
+    saveCacheLocal();
+    closeTxnModal(); renderAll();
     showToast('ลบรายการแล้ว', 'var(--primary-dark)');
   });
 }
@@ -1012,7 +1283,7 @@ function renderSettingsCategories() {
 function renderSettingsUsers() {
   document.getElementById('userList').innerHTML = state.users.map(u => `
     <button onclick='openEditUserForm(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="tap-scale w-full flex items-center gap-3 py-2 px-2 rounded-2xl hover:bg-[var(--bg)]">
-      <div class="w-9 h-9 rounded-xl flex items-center justify-center font-display font-bold text-sm text-white" style="background:${u.color}">${avatarContent(u)}</div>
+      <div class="w-9 h-9 overflow-hidden flex items-center justify-center font-display font-bold text-sm text-white" style="background:${u.color}; border-radius:${shapeRadius(u.shape)}">${avatarInnerHTML(u)}</div>
       <div class="flex-1 text-left min-w-0">
         <div class="text-sm truncate">${escapeHtml(u.name)}</div>
         ${u.monthlyLimit ? `<div class="text-[10px] text-[var(--ink-faint)] font-num">ลิมิต ${fmtMoney(u.monthlyLimit)}/เดือน</div>` : ''}
@@ -1051,24 +1322,35 @@ function renderCatIconPicker() {
   `).join('');
   lucide.createIcons();
 }
-async function saveCategory() {
+async function saveCategory(btn) {
   const id = document.getElementById('catId').value;
   const name = document.getElementById('catName').value.trim();
   if (!name) { showToast('กรุณาระบุชื่อหมวดหมู่', 'var(--expense)'); return; }
   const payload = { action: id ? 'updateCategory' : 'addCategory', id, name, type: state.catFormType, color: state.catFormColor, icon: state.catFormIcon };
+  setBtnLoading(btn, true, 'กำลังบันทึก...');
   try {
     const res = await apiPost(payload);
-    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
-    closeCategoryForm(); await refreshFromServer(true); renderSettingsCategories(); renderAll();
+    if (!res.success) { showToast(res.error, 'var(--expense)'); setBtnLoading(btn,false); return; }
+    if (id) {
+      const idx = state.categories.findIndex(c => c.ID === id);
+      if (idx > -1) state.categories[idx] = { ...state.categories[idx], Name: name, Type: state.catFormType, Color: state.catFormColor, Icon: state.catFormIcon };
+    } else {
+      state.categories.push({ ID: res.id, Name: name, Type: state.catFormType, Color: state.catFormColor, Icon: state.catFormIcon });
+    }
+    saveCacheLocal();
+    closeCategoryForm(); renderSettingsCategories(); renderAll();
     showToast('บันทึกหมวดหมู่แล้ว', 'var(--primary-dark)');
   } catch (e) { showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'var(--expense)'); }
+  setBtnLoading(btn, false);
 }
 function deleteCurrentCategory() {
   const id = document.getElementById('catId').value;
   confirmAction('ลบหมวดหมู่นี้ใช่หรือไม่?', async () => {
     const res = await apiPost({ action: 'deleteCategory', id });
     if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
-    closeCategoryForm(); await refreshFromServer(true); renderSettingsCategories(); renderAll();
+    state.categories = state.categories.filter(c => c.ID !== id);
+    saveCacheLocal();
+    closeCategoryForm(); renderSettingsCategories(); renderAll();
     showToast('ลบหมวดหมู่แล้ว', 'var(--primary-dark)');
   });
 }
