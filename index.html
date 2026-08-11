@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
+<title>บัญชีครอบครัว</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root{
+    --bg:#FFF8F2; --card:#FFFFFF;
+    --ink:#2D2A32; --ink-soft:#8B8290; --ink-faint:#C8C0CB;
+    --primary:#2EC4B6; --primary-dark:#1AA79A; --primary-light:#E4F8F6;
+    --accent:#FFC145; --accent-light:#FFF4DC;
+    --income:#20BF6B; --income-light:#E7F8EF;
+    --expense:#FF6B6B; --expense-light:#FFEDED;
+    --purple:#6C5CE7; --border:#F3E9DE;
+  }
+  *{box-sizing:border-box;}
+  body{ background:var(--bg); color:var(--ink); font-family:'Noto Sans Thai',sans-serif; -webkit-font-smoothing:antialiased; }
+  .font-display{font-family:'Kanit',sans-serif;}
+  .font-num{font-family:'Kanit',sans-serif; font-weight:600;}
+  .scrollbar-none::-webkit-scrollbar{display:none;}
+  .scrollbar-none{-ms-overflow-style:none; scrollbar-width:none;}
+  .modal-backdrop{background:rgba(45,42,50,0.45); backdrop-filter:blur(2px);}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+  input[type=number]{-moz-appearance:textfield;}
+  .tap-scale{transition:transform .12s ease;}
+  .tap-scale:active{transform:scale(0.94);}
+  .fade-in{animation:fadeIn .25s ease both;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .rise-in{animation:riseIn .28s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes riseIn{from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);}}
+  .icon-sw svg{width:100%;height:100%;}
+  .soft-shadow{box-shadow:0 4px 20px rgba(45,42,50,0.06);}
+  .pill-scroll{overflow-x:auto; scrollbar-width:none;}
+  .pill-scroll::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- CONFIG BANNER -->
+<div id="configBanner" class="hidden fixed inset-0 z-[100] flex items-center justify-center modal-backdrop p-4">
+  <div class="bg-[var(--card)] rounded-3xl max-w-md w-full p-6 rise-in">
+    <h2 class="font-display text-xl font-bold mb-2" style="color:var(--expense)">ยังไม่ได้ตั้งค่า API</h2>
+    <p class="text-sm text-[var(--ink-soft)] leading-relaxed">กรุณาใส่ Web App URL ของ Google Apps Script ในตัวแปร <code class="font-num bg-[var(--bg)] px-1 rounded">CONFIG.API_URL</code> ที่ต้นไฟล์ HTML นี้ก่อนใช้งาน</p>
+  </div>
+</div>
+
+<!-- ============================= LOGIN SCREEN ============================= -->
+<div id="loginScreen" class="min-h-screen flex flex-col items-center justify-center px-5 py-10">
+  <div class="w-full max-w-sm fade-in">
+    <div class="text-center mb-8">
+      <div class="w-16 h-16 mx-auto rounded-3xl flex items-center justify-center mb-4 text-3xl" style="background:var(--primary-light);">🐷</div>
+      <h1 class="font-display text-2xl font-bold" style="color:var(--primary-dark)">บัญชีครอบครัว</h1>
+      <p class="text-xs text-[var(--ink-soft)] mt-1">เลือกโปรไฟล์ของคุณเพื่อเข้าใช้งาน</p>
+    </div>
+    <div id="userTiles" class="grid grid-cols-3 gap-3 mb-5"></div>
+    <button onclick="openAddUserForm()" class="tap-scale w-full py-3 rounded-2xl border-2 border-dashed border-[var(--ink-faint)] text-sm text-[var(--ink-soft)] flex items-center justify-center gap-2">
+      <span class="icon-sw w-4 h-4" data-lucide="plus"></span> เพิ่มสมาชิกใหม่
+    </button>
+    <p id="loginStatus" class="text-center text-xs text-[var(--ink-soft)] mt-4"></p>
+  </div>
+</div>
+
+<!-- PIN Pad Modal -->
+<div id="pinModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-end sm:items-center justify-center">
+  <div class="bg-[var(--card)] w-full sm:max-w-xs sm:rounded-3xl rounded-t-3xl p-6 rise-in">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div id="pinAvatar" class="w-11 h-11 rounded-2xl flex items-center justify-center font-display font-bold text-white text-lg"></div>
+        <div class="font-semibold" id="pinUserName"></div>
+      </div>
+      <button onclick="closePinModal()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
+    </div>
+    <div class="flex justify-center gap-3 mb-5" id="pinDots">
+      <div class="w-3 h-3 rounded-full border-2 border-[var(--ink-faint)]"></div>
+      <div class="w-3 h-3 rounded-full border-2 border-[var(--ink-faint)]"></div>
+      <div class="w-3 h-3 rounded-full border-2 border-[var(--ink-faint)]"></div>
+      <div class="w-3 h-3 rounded-full border-2 border-[var(--ink-faint)]"></div>
+    </div>
+    <p id="pinError" class="hidden text-center text-xs mb-2" style="color:var(--expense)">PIN ไม่ถูกต้อง ลองอีกครั้ง</p>
+    <div class="grid grid-cols-3 gap-3" id="pinPad"></div>
+  </div>
+</div>
+
+<!-- ============================= MAIN APP ============================= -->
+<div id="app" class="hidden min-h-screen pb-28">
+  <header class="sticky top-0 z-30 rounded-b-3xl soft-shadow" style="background:linear-gradient(135deg, var(--primary), var(--primary-dark));">
+    <div class="max-w-2xl mx-auto px-4 pt-4 pb-3 flex items-center justify-between">
+      <div class="flex items-center gap-2 text-white">
+        <span class="text-xl">🐷</span>
+        <span class="font-display font-bold text-[15px]">บัญชีครอบครัว</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openSettings()" class="w-8 h-8 rounded-full flex items-center justify-center text-white/85 hover:bg-white/15 tap-scale"><span class="icon-sw w-[18px] h-[18px]" data-lucide="settings"></span></button>
+        <button onclick="switchUser()" id="userChip" class="tap-scale w-8 h-8 rounded-full flex items-center justify-center font-display font-bold text-sm text-white border-2 border-white/50"></button>
+      </div>
+    </div>
+    <div class="max-w-2xl mx-auto px-4 pb-3 flex items-center justify-between gap-2">
+      <div class="flex bg-black/15 rounded-full p-1 text-xs">
+        <button data-mode="day" onclick="setPeriodMode('day')" class="period-tab px-3 py-1.5 rounded-full text-white/70">วัน</button>
+        <button data-mode="month" onclick="setPeriodMode('month')" class="period-tab px-3 py-1.5 rounded-full text-white/70">เดือน</button>
+        <button data-mode="year" onclick="setPeriodMode('year')" class="period-tab px-3 py-1.5 rounded-full text-white/70">ปี</button>
+      </div>
+      <div class="flex items-center gap-1 text-white">
+        <button onclick="navigatePeriod(-1)" class="w-7 h-7 flex items-center justify-center tap-scale"><span class="icon-sw w-4 h-4" data-lucide="chevron-left"></span></button>
+        <span id="periodLabel" class="text-xs font-medium min-w-[92px] text-center"></span>
+        <button onclick="navigatePeriod(1)" class="w-7 h-7 flex items-center justify-center tap-scale"><span class="icon-sw w-4 h-4" data-lucide="chevron-right"></span></button>
+      </div>
+    </div>
+    <!-- Member tabs: keeps each person's data separate -->
+    <div class="max-w-2xl mx-auto px-4 pb-3 flex gap-2 pill-scroll" id="memberTabs"></div>
+  </header>
+
+  <main class="max-w-2xl mx-auto px-4 mt-5 space-y-4">
+
+    <!-- ===== SINGLE MEMBER VIEW ===== -->
+    <div id="singleView" class="space-y-4">
+      <section class="bg-[var(--card)] rounded-3xl soft-shadow p-5 fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-semibold text-[var(--ink-soft)]" id="stampLabel">สุทธิเดือนนี้</span>
+          <span class="font-num text-2xl font-bold" id="stampAmount" style="color:var(--primary-dark)">฿0</span>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-2xl p-3" style="background:var(--income-light)">
+            <div class="flex items-center gap-1.5 text-[11px] font-medium mb-1" style="color:var(--income)"><span class="icon-sw w-3.5 h-3.5" data-lucide="trending-up"></span>รายรับ</div>
+            <div class="font-num text-lg font-bold" style="color:var(--income)" id="incomeAmount">฿0</div>
+          </div>
+          <div class="rounded-2xl p-3" style="background:var(--expense-light)">
+            <div class="flex items-center gap-1.5 text-[11px] font-medium mb-1" style="color:var(--expense)"><span class="icon-sw w-3.5 h-3.5" data-lucide="trending-down"></span>รายจ่าย</div>
+            <div class="font-num text-lg font-bold" style="color:var(--expense)" id="expenseAmount">฿0</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-3 mt-3 border-t border-[var(--border)] text-[11px] text-[var(--ink-faint)]">
+          <span>ยอดคงเหลือสะสมทั้งหมด</span>
+          <span class="font-num" id="cumulativeAmount">฿0</span>
+        </div>
+      </section>
+
+      <!-- Budget progress -->
+      <section id="budgetSection" class="hidden bg-[var(--card)] rounded-3xl soft-shadow p-5 fade-in">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-display font-semibold text-sm flex items-center gap-1.5"><span class="icon-sw w-4 h-4" data-lucide="target" style="color:var(--accent)"></span>ลิมิตรายจ่ายเดือนนี้</h3>
+          <span class="text-xs font-num" id="budgetPct">0%</span>
+        </div>
+        <div class="w-full h-3 rounded-full bg-[var(--bg)] overflow-hidden">
+          <div id="budgetBar" class="h-full rounded-full transition-all" style="width:0%; background:var(--income);"></div>
+        </div>
+        <div class="flex items-center justify-between mt-2 text-[11px] text-[var(--ink-soft)]">
+          <span id="budgetSpent">ใช้ไป ฿0</span>
+          <span id="budgetLimit">ลิมิต ฿0</span>
+        </div>
+        <p id="budgetWarning" class="hidden text-[11px] mt-2 font-medium" style="color:var(--expense)"></p>
+      </section>
+
+      <!-- Insight -->
+      <section id="insightBox" class="rounded-3xl p-4 flex gap-3 items-start fade-in">
+        <span class="icon-sw w-5 h-5 shrink-0 mt-0.5" id="insightIcon" data-lucide="sparkles"></span>
+        <p id="insightText" class="text-[13px] leading-relaxed"></p>
+      </section>
+
+      <!-- Chart -->
+      <section id="chartSection" class="bg-[var(--card)] rounded-3xl soft-shadow p-5 fade-in">
+        <h3 class="font-display font-semibold text-sm mb-1" id="chartTitle" style="color:var(--ink)">สัดส่วนรายจ่ายตามหมวดหมู่</h3>
+        <p class="text-[11px] text-[var(--ink-faint)] mb-3" id="chartSubtitle"></p>
+        <div id="chartEmpty" class="hidden text-center py-8 text-xs text-[var(--ink-faint)]">ยังไม่มีข้อมูลในช่วงนี้</div>
+        <div id="donutWrap" class="flex flex-col sm:flex-row items-center gap-5">
+          <div class="w-36 h-36 shrink-0"><canvas id="categoryChart"></canvas></div>
+          <div id="chartLegend" class="flex-1 w-full space-y-2"></div>
+        </div>
+        <div id="barWrap" class="hidden h-52"><canvas id="trendChart"></canvas></div>
+      </section>
+
+      <!-- Transaction list -->
+      <section class="bg-[var(--card)] rounded-3xl soft-shadow overflow-hidden fade-in">
+        <div class="p-5 pb-2"><h3 class="font-display font-semibold text-sm">รายการบันทึก</h3></div>
+        <div id="txnListEmpty" class="hidden text-center py-10 px-5 text-xs text-[var(--ink-faint)]">
+          <span class="icon-sw w-8 h-8 mx-auto mb-2 block opacity-40" data-lucide="notebook-pen"></span>
+          ยังไม่มีรายการในช่วงนี้ กดปุ่ม + เพื่อเริ่มบันทึก
+        </div>
+        <div id="txnList" class="px-3 pb-3"></div>
+      </section>
+    </div>
+
+    <!-- ===== ALL MEMBERS VIEW (kept separate per person, never merged) ===== -->
+    <div id="allView" class="hidden space-y-4">
+      <p class="text-xs text-[var(--ink-soft)] px-1">ข้อมูลแต่ละคนจะไม่ถูกนำมารวมกัน แตะการ์ดเพื่อดูรายละเอียดของแต่ละคน</p>
+      <div id="memberCards" class="space-y-3"></div>
+      <section class="bg-[var(--card)] rounded-3xl soft-shadow overflow-hidden fade-in">
+        <div class="p-5 pb-2"><h3 class="font-display font-semibold text-sm">รายการทั้งหมด (ทุกคน)</h3></div>
+        <div id="allTxnListEmpty" class="hidden text-center py-10 px-5 text-xs text-[var(--ink-faint)]">ยังไม่มีรายการในช่วงนี้</div>
+        <div id="allTxnList" class="px-3 pb-3"></div>
+      </section>
+    </div>
+  </main>
+
+  <button onclick="openTxnModal()" class="tap-scale fixed bottom-6 right-5 sm:right-[calc(50%-19rem)] w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white z-30" style="background:var(--primary);">
+    <span class="icon-sw w-6 h-6" data-lucide="plus"></span>
+  </button>
+</div>
+
+<!-- ============================= TRANSACTION MODAL ============================= -->
+<div id="txnModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-end sm:items-center justify-center">
+  <div class="bg-[var(--card)] w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[92vh] overflow-y-auto scrollbar-none rise-in">
+    <div class="p-5 pb-3 flex items-center justify-between sticky top-0 bg-[var(--card)] z-10">
+      <h2 class="font-display font-bold text-lg" id="txnModalTitle">เพิ่มรายการ</h2>
+      <button onclick="closeTxnModal()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
+    </div>
+    <div class="p-5 pt-2 space-y-4">
+      <input type="hidden" id="txnId">
+      <div class="flex bg-[var(--bg)] rounded-2xl p-1">
+        <button type="button" onclick="setTxnType('expense')" id="typeExpenseBtn" class="flex-1 py-2 rounded-xl text-sm font-semibold">รายจ่าย</button>
+        <button type="button" onclick="setTxnType('income')" id="typeIncomeBtn" class="flex-1 py-2 rounded-xl text-sm font-semibold">รายรับ</button>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1 block">จำนวนเงิน</label>
+        <div class="flex items-center gap-2 border-b-2 border-[var(--border)] focus-within:border-[var(--primary)] pb-1">
+          <span class="font-num text-xl text-[var(--ink-faint)]">฿</span>
+          <input type="number" inputmode="decimal" id="txnAmount" placeholder="0" class="font-num text-2xl font-bold w-full outline-none bg-transparent">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-2 block">หมวดหมู่</label>
+        <div id="txnCategoryGrid" class="grid grid-cols-4 gap-2.5"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-[var(--ink-soft)] mb-1 block">วันที่</label>
+          <input type="date" id="txnDate" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]">
+        </div>
+        <div>
+          <label class="text-xs text-[var(--ink-soft)] mb-1 block">บันทึกโดย</label>
+          <select id="txnUser" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]"></select>
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1 block">โน้ต (ไม่บังคับ)</label>
+        <input type="text" id="txnNote" placeholder="เช่น ข้าวเที่ยงกับเพื่อน" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button id="txnDeleteBtn" onclick="deleteCurrentTxn()" class="hidden tap-scale px-4 py-3 rounded-2xl border-2 text-sm font-semibold" style="border-color:var(--expense); color:var(--expense)">ลบ</button>
+        <button onclick="saveTxn()" class="tap-scale flex-1 py-3 rounded-2xl text-white font-semibold" style="background:var(--primary);">บันทึกรายการ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= SETTINGS MODAL ============================= -->
+<div id="settingsModal" class="hidden fixed inset-0 z-50 modal-backdrop flex items-end sm:items-center justify-center">
+  <div class="bg-[var(--card)] w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl max-h-[90vh] overflow-y-auto scrollbar-none rise-in">
+    <div class="p-5 pb-3 flex items-center justify-between sticky top-0 bg-[var(--card)] z-10 border-b border-[var(--border)]">
+      <h2 class="font-display font-bold text-lg">ตั้งค่า</h2>
+      <button onclick="closeSettings()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
+    </div>
+    <div class="flex px-5 pt-3 gap-2 pill-scroll">
+      <button onclick="setSettingsTab('categories')" id="tabCatBtn" class="settings-tab px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap">หมวดหมู่</button>
+      <button onclick="setSettingsTab('users')" id="tabUserBtn" class="settings-tab px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap">สมาชิก &amp; ลิมิต</button>
+      <button onclick="setSettingsTab('backup')" id="tabBackupBtn" class="settings-tab px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap">สำรองข้อมูล</button>
+    </div>
+
+    <div id="settingsCategories" class="p-5 space-y-2">
+      <div id="catList_expense" class="space-y-1.5"></div>
+      <p class="text-xs text-[var(--ink-soft)] pt-3 pb-1">หมวดหมู่รายรับ</p>
+      <div id="catList_income" class="space-y-1.5"></div>
+      <button onclick="openCategoryForm()" class="tap-scale w-full mt-3 py-2.5 rounded-2xl border-2 border-dashed border-[var(--ink-faint)] text-sm text-[var(--ink-soft)] flex items-center justify-center gap-2">
+        <span class="icon-sw w-4 h-4" data-lucide="plus"></span> เพิ่มหมวดหมู่
+      </button>
+    </div>
+
+    <div id="settingsUsers" class="hidden p-5 space-y-2">
+      <div id="userList" class="space-y-1.5"></div>
+      <button onclick="openAddUserForm()" class="tap-scale w-full mt-3 py-2.5 rounded-2xl border-2 border-dashed border-[var(--ink-faint)] text-sm text-[var(--ink-soft)] flex items-center justify-center gap-2">
+        <span class="icon-sw w-4 h-4" data-lucide="plus"></span> เพิ่มสมาชิก
+      </button>
+    </div>
+
+    <div id="settingsBackup" class="hidden p-5 space-y-3">
+      <p class="text-xs text-[var(--ink-soft)] leading-relaxed">ข้อมูลทั้งหมดถูกเก็บไว้บน Google Sheet ของคุณอยู่แล้ว แต่สามารถส่งออกไฟล์สำรองเก็บไว้เพิ่มเติมได้</p>
+      <button onclick="exportBackup()" class="tap-scale w-full py-2.5 rounded-2xl border border-[var(--border)] text-sm font-semibold flex items-center justify-center gap-2" style="color:var(--primary-dark)">
+        <span class="icon-sw w-4 h-4" data-lucide="download"></span> ส่งออกไฟล์สำรอง (JSON)
+      </button>
+      <button onclick="reloadFromServer()" class="tap-scale w-full py-2.5 rounded-2xl border border-[var(--border)] text-sm font-semibold flex items-center justify-center gap-2" style="color:var(--primary-dark)">
+        <span class="icon-sw w-4 h-4" data-lucide="refresh-cw"></span> โหลดข้อมูลล่าสุดจากเซิร์ฟเวอร์
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Category Form Modal -->
+<div id="categoryFormModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-end sm:items-center justify-center">
+  <div class="bg-[var(--card)] w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-5 rise-in">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display font-bold" id="catFormTitle">เพิ่มหมวดหมู่</h3>
+      <button onclick="closeCategoryForm()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
+    </div>
+    <input type="hidden" id="catId">
+    <div class="space-y-3">
+      <div class="flex bg-[var(--bg)] rounded-2xl p-1">
+        <button type="button" onclick="setCatFormType('expense')" id="catTypeExpenseBtn" class="flex-1 py-1.5 rounded-xl text-xs font-semibold">รายจ่าย</button>
+        <button type="button" onclick="setCatFormType('income')" id="catTypeIncomeBtn" class="flex-1 py-1.5 rounded-xl text-xs font-semibold">รายรับ</button>
+      </div>
+      <input type="text" id="catName" placeholder="ชื่อหมวดหมู่" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]">
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">สี</label>
+        <div id="catColorPicker" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">ไอคอน</label>
+        <div id="catIconPicker" class="grid grid-cols-6 gap-2"></div>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button id="catDeleteBtn" onclick="deleteCurrentCategory()" class="hidden tap-scale px-4 py-2.5 rounded-2xl border-2 text-sm font-semibold" style="border-color:var(--expense); color:var(--expense)">ลบ</button>
+        <button onclick="saveCategory()" class="tap-scale flex-1 py-2.5 rounded-2xl text-white font-semibold text-sm" style="background:var(--primary);">บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit User Modal -->
+<div id="userFormModal" class="hidden fixed inset-0 z-[60] modal-backdrop flex items-end sm:items-center justify-center">
+  <div class="bg-[var(--card)] w-full sm:max-w-sm sm:rounded-3xl rounded-t-3xl p-5 rise-in max-h-[90vh] overflow-y-auto scrollbar-none">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-display font-bold" id="userFormTitle">เพิ่มสมาชิก</h3>
+      <button onclick="closeUserForm()" class="text-[var(--ink-soft)]"><span class="icon-sw w-5 h-5" data-lucide="x"></span></button>
+    </div>
+    <input type="hidden" id="userId">
+    <div class="space-y-4">
+      <div class="flex justify-center">
+        <div id="userAvatarPreview" class="w-16 h-16 rounded-3xl flex items-center justify-center text-3xl font-display font-bold text-white"></div>
+      </div>
+      <input type="text" id="userName" placeholder="ชื่อสมาชิก" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)]">
+      <input type="text" id="userPin" placeholder="PIN 4 หลัก" maxlength="4" inputmode="numeric" class="w-full border border-[var(--border)] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--primary)] font-num">
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">สีพื้นหลังโปรไฟล์</label>
+        <div id="userColorPicker" class="flex flex-wrap gap-2"></div>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1.5 block">อิโมจิประจำตัว (ไม่เลือกก็ได้)</label>
+        <div id="userEmojiPicker" class="grid grid-cols-7 gap-1.5"></div>
+      </div>
+      <div>
+        <label class="text-xs text-[var(--ink-soft)] mb-1 block flex items-center gap-1.5"><span class="icon-sw w-3.5 h-3.5" data-lucide="target"></span>ลิมิตรายจ่ายต่อเดือน (ไม่บังคับ)</label>
+        <div class="flex items-center gap-2 border border-[var(--border)] rounded-xl px-3 py-2">
+          <span class="font-num text-[var(--ink-faint)]">฿</span>
+          <input type="number" id="userMonthlyLimit" placeholder="0 = ไม่ตั้งลิมิต" class="w-full outline-none bg-transparent font-num text-sm">
+        </div>
+        <p class="text-[10px] text-[var(--ink-faint)] mt-1">ตั้งครั้งเดียว ใช้เตือนทุกเดือนโดยอัตโนมัติ</p>
+      </div>
+      <p id="userFormError" class="hidden text-xs" style="color:var(--expense)"></p>
+      <div class="flex gap-2 pt-1">
+        <button id="userDeleteBtn" onclick="deleteCurrentUser()" class="hidden tap-scale px-4 py-2.5 rounded-2xl border-2 text-sm font-semibold" style="border-color:var(--expense); color:var(--expense)">ลบ</button>
+        <button onclick="saveUser()" class="tap-scale flex-1 py-2.5 rounded-2xl text-white font-semibold text-sm" style="background:var(--primary);">บันทึก</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="hidden fixed inset-0 z-[70] modal-backdrop flex items-center justify-center px-5">
+  <div class="bg-[var(--card)] w-full max-w-xs rounded-3xl p-5 rise-in text-center">
+    <p id="confirmText" class="text-sm mb-4"></p>
+    <div class="flex gap-2">
+      <button onclick="closeConfirm()" class="flex-1 py-2.5 rounded-2xl border border-[var(--border)] text-sm font-semibold">ยกเลิก</button>
+      <button id="confirmActionBtn" class="flex-1 py-2.5 rounded-2xl text-white text-sm font-semibold" style="background:var(--expense);">ยืนยัน</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[80] px-4 py-2.5 rounded-full text-white text-xs font-medium shadow-lg"></div>
+
+<script>
+/* CONFIG — ใส่ Web App URL ของ Google Apps Script ที่นี่หลัง Deploy เสร็จ */
+const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycby8CbFHJH77gWU0nX7OOIhFy1EpMoTh1GlJ-ymI24ZFXAl8CKDp333AQJ-A23hvq5TAIw/exec' };
+
+let state = {
+  users: [], categories: [], transactions: [],
+  currentUser: null,
+  viewUserId: null, // 'ALL' หรือ user id — คนละตัวกับ currentUser (คนที่ล็อกอิน) เผื่อดูข้อมูลคนอื่น
+  period: { mode: 'month', date: new Date() },
+  pendingLoginUser: null, pinBuffer: '',
+  txnType: 'expense', selectedCategoryId: null,
+  catFormType: 'expense', catFormColor: '', catFormIcon: '',
+  userFormColor: '', userFormEmoji: '',
+  settingsTab: 'categories',
+  donutChart: null, trendChart: null
+};
+
+const PALETTE = ['#FF6B6B','#FFA94D','#FFC145','#6C5CE7','#A66DD4','#FF7EB6','#4D96FF','#2EC4B6','#20BF6B','#495867','#F76E11','#00B8A9'];
+const CAT_ICONS = ['utensils','car','home','shopping-bag','heart-pulse','film','book-open','wallet','gift','trending-up','briefcase','more-horizontal','coffee','gamepad-2','plane','phone','pill','circle'];
+const EMOJI_OPTIONS = ['😀','😎','🥳','🥰','😺','🐶','🦊','🐼','🐰','🦁','🐸','🐵','🦄','🐯','🌸','🌈','⭐','🍀','🎈','☀️','🌙','💎','👑','🎨','⚽','🎮','📚','☕','🚀','❤️','🍕','🌻'];
+const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+const THAI_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+
+window.addEventListener('DOMContentLoaded', init);
+
+async function init() {
+  if (!CONFIG.API_URL) document.getElementById('configBanner').classList.remove('hidden');
+  buildPinPad();
+  document.getElementById('txnDate').valueAsDate = new Date();
+  const cache = localStorage.getItem('ledger_cache');
+  if (cache) {
+    try {
+      const parsed = JSON.parse(cache);
+      state.users = parsed.users || []; state.categories = parsed.categories || []; state.transactions = parsed.transactions || [];
+    } catch (e) {}
+  }
+  renderUserTiles();
+  await refreshFromServer(true);
+  renderUserTiles();
+  const session = localStorage.getItem('ledger_session');
+  if (session) { const u = state.users.find(u => u.id === session); if (u) loginAs(u); }
+}
+
+async function refreshFromServer(silent) {
+  if (!CONFIG.API_URL) return;
+  try {
+    const res = await apiGet({ action: 'bootstrap' });
+    if (res.success) {
+      state.users = res.users; state.categories = res.categories; state.transactions = res.transactions;
+      localStorage.setItem('ledger_cache', JSON.stringify({ users: state.users, categories: state.categories, transactions: state.transactions }));
+      if (!silent) showToast('อัปเดตข้อมูลล่าสุดแล้ว', 'var(--primary-dark)');
+    }
+  } catch (e) {
+    if (!silent) showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ กำลังใช้ข้อมูลในเครื่อง', 'var(--expense)');
+  }
+}
+
+async function apiGet(params) {
+  const qs = Object.keys(params).map(k => encodeURIComponent(k) + '=' + encodeURIComponent(params[k])).join('&');
+  const resp = await fetch(CONFIG.API_URL + '?' + qs);
+  return resp.json();
+}
+async function apiPost(payload) {
+  const resp = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+  return resp.json();
+}
+
+/* ========================= LOGIN ========================= */
+function initials(name) { return (name || '?').trim().charAt(0).toUpperCase(); }
+function avatarContent(u) { return u.icon ? u.icon : initials(u.name); }
+
+function renderUserTiles() {
+  const wrap = document.getElementById('userTiles');
+  wrap.innerHTML = state.users.map(u => `
+    <button onclick='openPinModal(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="tap-scale flex flex-col items-center gap-1.5">
+      <div class="w-16 h-16 rounded-3xl flex items-center justify-center text-2xl font-display font-bold text-white soft-shadow" style="background:${u.color || '#2EC4B6'}">${avatarContent(u)}</div>
+      <span class="text-xs text-[var(--ink-soft)] truncate max-w-[70px]">${escapeHtml(u.name)}</span>
+    </button>`).join('');
+  document.getElementById('loginStatus').textContent = state.users.length === 0 ? 'ยังไม่มีสมาชิก กด "เพิ่มสมาชิกใหม่" เพื่อเริ่มต้น' : '';
+}
+
+function openPinModal(user) {
+  state.pendingLoginUser = user; state.pinBuffer = '';
+  document.getElementById('pinAvatar').style.background = user.color || '#2EC4B6';
+  document.getElementById('pinAvatar').textContent = avatarContent(user);
+  document.getElementById('pinUserName').textContent = user.name;
+  document.getElementById('pinError').classList.add('hidden');
+  updatePinDots();
+  document.getElementById('pinModal').classList.remove('hidden');
+}
+function closePinModal() { document.getElementById('pinModal').classList.add('hidden'); }
+
+function buildPinPad() {
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','back'];
+  document.getElementById('pinPad').innerHTML = keys.map(k => {
+    if (k === '') return '<div></div>';
+    if (k === 'back') return `<button onclick="pinBackspace()" class="tap-scale h-14 rounded-2xl bg-[var(--bg)] flex items-center justify-center"><span class="icon-sw w-5 h-5" data-lucide="delete"></span></button>`;
+    return `<button onclick="pinPress('${k}')" class="tap-scale h-14 rounded-2xl bg-[var(--bg)] font-num text-lg font-bold">${k}</button>`;
+  }).join('');
+}
+function pinPress(d) { if (state.pinBuffer.length >= 4) return; state.pinBuffer += d; updatePinDots(); if (state.pinBuffer.length === 4) submitPin(); }
+function pinBackspace() { state.pinBuffer = state.pinBuffer.slice(0, -1); updatePinDots(); }
+function updatePinDots() {
+  document.querySelectorAll('#pinDots > div').forEach((d, i) => {
+    const filled = i < state.pinBuffer.length;
+    d.style.background = filled ? 'var(--primary)' : 'transparent';
+    d.style.borderColor = filled ? 'var(--primary)' : 'var(--ink-faint)';
+  });
+}
+async function submitPin() {
+  const user = state.pendingLoginUser;
+  try {
+    const res = await apiPost({ action: 'login', userId: user.id, pin: state.pinBuffer });
+    if (res.success) { closePinModal(); loginAs(res.user); }
+    else { document.getElementById('pinError').classList.remove('hidden'); state.pinBuffer = ''; updatePinDots(); }
+  } catch (e) { showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ ตรวจสอบ API_URL', 'var(--expense)'); }
+}
+
+function loginAs(user) {
+  state.currentUser = user; state.viewUserId = user.id;
+  localStorage.setItem('ledger_session', user.id);
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  const chip = document.getElementById('userChip');
+  chip.style.background = user.color || '#2EC4B6'; chip.textContent = avatarContent(user);
+  refreshFromServer(true).then(renderAll);
+  renderAll();
+}
+function switchUser() {
+  state.currentUser = null; localStorage.removeItem('ledger_session');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  renderUserTiles();
+}
+
+/* ========================= USER FORM (add/edit + avatar + monthly limit) ========================= */
+function openAddUserForm() {
+  document.getElementById('userFormTitle').textContent = 'เพิ่มสมาชิก';
+  document.getElementById('userId').value = ''; document.getElementById('userName').value = '';
+  document.getElementById('userPin').value = ''; document.getElementById('userPin').placeholder = 'PIN 4 หลัก';
+  document.getElementById('userMonthlyLimit').value = '';
+  document.getElementById('userDeleteBtn').classList.add('hidden');
+  document.getElementById('userFormError').classList.add('hidden');
+  state.userFormColor = PALETTE[state.users.length % PALETTE.length];
+  state.userFormEmoji = '';
+  renderUserColorPicker(); renderUserEmojiPicker(); updateAvatarPreview();
+  document.getElementById('userFormModal').classList.remove('hidden');
+}
+function openEditUserForm(user) {
+  document.getElementById('userFormTitle').textContent = 'แก้ไขโปรไฟล์';
+  document.getElementById('userId').value = user.id; document.getElementById('userName').value = user.name;
+  document.getElementById('userPin').value = ''; document.getElementById('userPin').placeholder = 'เว้นว่างถ้าไม่เปลี่ยน PIN';
+  document.getElementById('userMonthlyLimit').value = user.monthlyLimit ? user.monthlyLimit : '';
+  document.getElementById('userDeleteBtn').classList.remove('hidden');
+  document.getElementById('userFormError').classList.add('hidden');
+  state.userFormColor = user.color; state.userFormEmoji = user.icon || '';
+  renderUserColorPicker(); renderUserEmojiPicker(); updateAvatarPreview();
+  document.getElementById('userFormModal').classList.remove('hidden');
+}
+function closeUserForm() { document.getElementById('userFormModal').classList.add('hidden'); }
+function updateAvatarPreview() {
+  const el = document.getElementById('userAvatarPreview');
+  el.style.background = state.userFormColor;
+  const name = document.getElementById('userName').value;
+  el.textContent = state.userFormEmoji || initials(name);
+}
+document.addEventListener('input', (e) => { if (e.target && e.target.id === 'userName') updateAvatarPreview(); });
+
+function renderUserColorPicker() {
+  document.getElementById('userColorPicker').innerHTML = PALETTE.map(c => `
+    <button type="button" onclick="state.userFormColor='${c}'; renderUserColorPicker(); updateAvatarPreview();" class="tap-scale w-8 h-8 rounded-full" style="background:${c}; ${state.userFormColor===c?'box-shadow:0 0 0 2.5px var(--card),0 0 0 4.5px var(--ink);':''}"></button>
+  `).join('');
+}
+function renderUserEmojiPicker() {
+  const noneBtn = `<button type="button" onclick="state.userFormEmoji=''; renderUserEmojiPicker(); updateAvatarPreview();" class="tap-scale w-9 h-9 rounded-xl flex items-center justify-center text-xs font-num" style="background:${state.userFormEmoji===''?'var(--primary)':'var(--bg)'}; color:${state.userFormEmoji===''?'#fff':'var(--ink-soft)'}">Aa</button>`;
+  const emojiBtns = EMOJI_OPTIONS.map(em => `
+    <button type="button" onclick="state.userFormEmoji='${em}'; renderUserEmojiPicker(); updateAvatarPreview();" class="tap-scale w-9 h-9 rounded-xl flex items-center justify-center text-lg" style="background:${state.userFormEmoji===em?'var(--primary)':'var(--bg)'}">${em}</button>
+  `).join('');
+  document.getElementById('userEmojiPicker').innerHTML = noneBtn + emojiBtns;
+}
+
+async function saveUser() {
+  const id = document.getElementById('userId').value;
+  const name = document.getElementById('userName').value.trim();
+  const pin = document.getElementById('userPin').value.trim();
+  const monthlyLimit = document.getElementById('userMonthlyLimit').value;
+  const errEl = document.getElementById('userFormError');
+  if (!name) { errEl.textContent = 'กรุณาระบุชื่อ'; errEl.classList.remove('hidden'); return; }
+  if (!id && !/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN ต้องเป็นตัวเลข 4 หลัก'; errEl.classList.remove('hidden'); return; }
+  if (pin && !/^\d{4}$/.test(pin)) { errEl.textContent = 'PIN ต้องเป็นตัวเลข 4 หลัก'; errEl.classList.remove('hidden'); return; }
+  try {
+    const payload = { action: id ? 'updateUser' : 'addUser', id, name, pin, color: state.userFormColor, icon: state.userFormEmoji, monthlyLimit: monthlyLimit || 0 };
+    const res = await apiPost(payload);
+    if (!res.success) { errEl.textContent = res.error; errEl.classList.remove('hidden'); return; }
+    closeUserForm();
+    await refreshFromServer(true);
+    renderUserTiles();
+    if (state.currentUser) { renderSettingsUsers(); renderMemberTabs(); renderAll(); }
+    showToast('บันทึกโปรไฟล์แล้ว', 'var(--primary-dark)');
+  } catch (e) { errEl.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ'; errEl.classList.remove('hidden'); }
+}
+function deleteCurrentUser() {
+  const id = document.getElementById('userId').value;
+  confirmAction('ลบสมาชิกคนนี้ใช่หรือไม่?', async () => {
+    const res = await apiPost({ action: 'deleteUser', id });
+    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
+    closeUserForm(); await refreshFromServer(true); renderUserTiles(); renderSettingsUsers();
+    if (state.currentUser) { renderMemberTabs(); renderAll(); }
+    showToast('ลบสมาชิกแล้ว', 'var(--primary-dark)');
+  });
+}
+
+/* ========================= PERIOD ========================= */
+function setPeriodMode(mode) { state.period.mode = mode; renderAll(); }
+function navigatePeriod(dir) {
+  const d = new Date(state.period.date);
+  if (state.period.mode === 'day') d.setDate(d.getDate() + dir);
+  else if (state.period.mode === 'month') d.setMonth(d.getMonth() + dir);
+  else d.setFullYear(d.getFullYear() + dir);
+  state.period.date = d; renderAll();
+}
+function beYear(y) { return y + 543; }
+function periodLabel() {
+  const d = state.period.date;
+  if (state.period.mode === 'day') return `${d.getDate()} ${THAI_MONTHS_SHORT[d.getMonth()]} ${beYear(d.getFullYear())}`;
+  if (state.period.mode === 'month') return `${THAI_MONTHS[d.getMonth()]} ${beYear(d.getFullYear())}`;
+  return `พ.ศ. ${beYear(d.getFullYear())}`;
+}
+function dateKey(d) { return d.toISOString().slice(0,10); }
+function inPeriod(t, d, mode) {
+  const td = new Date(t.Date);
+  if (isNaN(td)) return false;
+  if (mode === 'day') return td.getFullYear()===d.getFullYear() && td.getMonth()===d.getMonth() && td.getDate()===d.getDate();
+  if (mode === 'month') return td.getFullYear()===d.getFullYear() && td.getMonth()===d.getMonth();
+  return td.getFullYear() === d.getFullYear();
+}
+function getPeriodTransactions() {
+  return state.transactions.filter(t => inPeriod(t, state.period.date, state.period.mode))
+    .sort((a,b) => new Date(b.Date) - new Date(a.Date) || new Date(b.CreatedAt) - new Date(a.CreatedAt));
+}
+function getPrevPeriodTransactionsFor(userId) {
+  const d = new Date(state.period.date);
+  if (state.period.mode === 'day') d.setDate(d.getDate()-1);
+  else if (state.period.mode === 'month') d.setMonth(d.getMonth()-1);
+  else d.setFullYear(d.getFullYear()-1);
+  return state.transactions.filter(t => inPeriod(t, d, state.period.mode) && (!userId || t.UserID === userId));
+}
+function sumIncome(list) { return list.filter(t=>t.Type==='income').reduce((s,t)=>s+Number(t.Amount),0); }
+function sumExpense(list) { return list.filter(t=>t.Type==='expense').reduce((s,t)=>s+Number(t.Amount),0); }
+function fmtMoney(n) { const sign = n < 0 ? '-' : ''; return sign + '฿' + Math.abs(n).toLocaleString('th-TH', {maximumFractionDigits:0}); }
+function escapeHtml(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function weekdayThai(d) { return ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][d.getDay()]; }
+
+/* ========================= MEMBER TABS (keeps each person separate) ========================= */
+function renderMemberTabs() {
+  const wrap = document.getElementById('memberTabs');
+  const allActive = state.viewUserId === 'ALL';
+  let html = `<button onclick="setViewUser('ALL')" class="tap-scale shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1" style="background:${allActive?'var(--accent)':'rgba(255,255,255,0.18)'}; color:${allActive?'var(--ink)':'#fff'}"><span class="icon-sw w-3.5 h-3.5" data-lucide="users"></span>ทุกคน</button>`;
+  html += state.users.map(u => {
+    const active = state.viewUserId === u.id;
+    return `<button onclick="setViewUser('${u.id}')" class="tap-scale shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5" style="background:${active?'#fff':'rgba(255,255,255,0.18)'}; color:${active?u.color:'#fff'}">
+      <span class="w-4 h-4 rounded-full flex items-center justify-center text-[10px]" style="background:${u.color}">${u.icon || ''}</span>${escapeHtml(u.name)}
+    </button>`;
+  }).join('');
+  wrap.innerHTML = html;
+  lucide.createIcons();
+}
+function setViewUser(id) { state.viewUserId = id; renderAll(); }
+
+/* ========================= RENDER ROOT ========================= */
+function renderAll() {
+  if (!state.currentUser) return;
+  document.querySelectorAll('.period-tab').forEach(b => {
+    const active = b.dataset.mode === state.period.mode;
+    b.style.background = active ? 'var(--accent)' : 'transparent';
+    b.style.color = active ? 'var(--ink)' : 'rgba(255,255,255,0.75)';
+    b.style.fontWeight = active ? '700' : '500';
+  });
+  document.getElementById('periodLabel').textContent = periodLabel();
+  renderMemberTabs();
+
+  if (state.viewUserId === 'ALL') {
+    document.getElementById('singleView').classList.add('hidden');
+    document.getElementById('allView').classList.remove('hidden');
+    renderAllMembersView();
+  } else {
+    document.getElementById('allView').classList.add('hidden');
+    document.getElementById('singleView').classList.remove('hidden');
+    renderSingleMemberView(state.viewUserId);
+  }
+  lucide.createIcons();
+}
+
+/* ========================= SINGLE MEMBER VIEW ========================= */
+function renderSingleMemberView(userId) {
+  const user = state.users.find(u => u.id === userId);
+  const periodTxns = getPeriodTransactions().filter(t => t.UserID === userId);
+  const income = sumIncome(periodTxns), expense = sumExpense(periodTxns), net = income - expense;
+  const cumulative = state.transactions.filter(t=>t.UserID===userId).reduce((s,t)=> s + (t.Type==='income'?Number(t.Amount):-Number(t.Amount)), 0);
+
+  document.getElementById('stampLabel').textContent = (state.period.mode==='day'?'สุทธิวันนี้':state.period.mode==='month'?'สุทธิเดือนนี้':'สุทธิปีนี้') + (user? ' · '+user.name : '');
+  document.getElementById('stampAmount').textContent = fmtMoney(net);
+  document.getElementById('incomeAmount').textContent = fmtMoney(income);
+  document.getElementById('expenseAmount').textContent = fmtMoney(expense);
+  document.getElementById('cumulativeAmount').textContent = fmtMoney(cumulative);
+
+  renderBudget(user, expense);
+  renderInsightSingle(user, periodTxns, income, expense);
+  renderChartSingle(userId, periodTxns);
+  renderTxnList('txnList', 'txnListEmpty', periodTxns, false);
+}
+
+function renderBudget(user, monthExpense) {
+  const sec = document.getElementById('budgetSection');
+  if (!user || !user.monthlyLimit || state.period.mode !== 'month') { sec.classList.add('hidden'); return; }
+  sec.classList.remove('hidden');
+  const pct = Math.min(Math.round(monthExpense / user.monthlyLimit * 100), 999);
+  document.getElementById('budgetPct').textContent = pct + '%';
+  const bar = document.getElementById('budgetBar');
+  bar.style.width = Math.min(pct,100) + '%';
+  bar.style.background = pct >= 100 ? 'var(--expense)' : pct >= 70 ? 'var(--accent)' : 'var(--income)';
+  document.getElementById('budgetSpent').textContent = 'ใช้ไป ' + fmtMoney(monthExpense);
+  document.getElementById('budgetLimit').textContent = 'ลิมิต ' + fmtMoney(user.monthlyLimit);
+  const warn = document.getElementById('budgetWarning');
+  if (pct >= 100) { warn.textContent = `⚠️ ใช้จ่ายเกินลิมิตที่ตั้งไว้แล้ว ${fmtMoney(monthExpense - user.monthlyLimit)}`; warn.classList.remove('hidden'); }
+  else if (pct >= 90) { warn.textContent = `ใกล้ถึงลิมิตแล้ว เหลืออีก ${fmtMoney(user.monthlyLimit - monthExpense)}`; warn.classList.remove('hidden'); }
+  else { warn.classList.add('hidden'); }
+}
+
+function generateInsight(user, periodTxns, income, expense) {
+  let tone = 'neutral', text = '';
+  if (income === 0 && expense === 0) {
+    return { tone:'neutral', text: `ยังไม่มีการบันทึกรายการของ${user?user.name:'คุณ'}ในช่วงนี้ ลองกดปุ่ม + เพื่อเริ่มบันทึกกันเลย` };
+  }
+  const expenseByCat = {};
+  periodTxns.filter(t => t.Type==='expense').forEach(t => { expenseByCat[t.CategoryID] = (expenseByCat[t.CategoryID]||0) + Number(t.Amount); });
+  let topCatId = null, topAmt = 0;
+  Object.keys(expenseByCat).forEach(k => { if (expenseByCat[k] > topAmt) { topAmt = expenseByCat[k]; topCatId = k; } });
+  const topCat = state.categories.find(c => c.ID === topCatId);
+  const topPct = expense > 0 ? Math.round(topAmt/expense*100) : 0;
+
+  const prev = getPrevPeriodTransactionsFor(user ? user.id : null);
+  const prevExpense = sumExpense(prev);
+  let trendPhrase = '';
+  if (prevExpense > 0) {
+    const diffPct = Math.round((expense - prevExpense) / prevExpense * 100);
+    if (Math.abs(diffPct) >= 5) trendPhrase = diffPct > 0 ? ` เทียบกับช่วงก่อนหน้าใช้จ่ายเพิ่มขึ้น ${diffPct}%` : ` เทียบกับช่วงก่อนหน้าใช้จ่ายลดลง ${Math.abs(diffPct)}%`;
+  }
+
+  if (expense > income) {
+    tone = 'warning';
+    text = `ช่วงนี้รายจ่ายมากกว่ารายรับอยู่ ${fmtMoney(expense-income)}${topCat ? ` โดยหมวด "${topCat.Name}" ใช้ไปมากที่สุด (${topPct}%)` : ''} ลองทบทวนดูนะ${trendPhrase}`;
+  } else if (income > 0) {
+    const savingsRate = Math.round((income-expense)/income*100);
+    if (savingsRate >= 30) { tone = 'positive'; text = `เก่งมาก! ออมได้ถึง ${savingsRate}% ของรายรับ${topCat ? ` แม้หมวด "${topCat.Name}" จะใช้มากสุด (${topPct}%)` : ''} รักษาแบบนี้ไว้ต่อไปนะ${trendPhrase}`; }
+    else if (savingsRate >= 0) { tone = 'neutral'; text = `ออมได้ ${savingsRate}% ของรายรับ${topCat ? ` หมวดที่ใช้จ่ายมากที่สุดคือ "${topCat.Name}" (${topPct}%)` : ''} ลองตั้งเป้าออมเพิ่มดูนะ${trendPhrase}`; }
+    else { tone = 'warning'; text = `ใช้จ่ายเกือบเท่ารายรับแล้ว${topCat ? ` หมวด "${topCat.Name}" ใช้มากสุด (${topPct}%)` : ''} วางแผนงบให้รัดกุมขึ้นดีกว่านะ${trendPhrase}`; }
+  } else {
+    text = `ช่วงนี้มีแต่รายจ่าย ${fmtMoney(expense)} ยังไม่มีรายรับเข้ามา${topCat ? ` หมวด "${topCat.Name}" ใช้มากสุด (${topPct}%)` : ''}`;
+  }
+  return { tone, text };
+}
+
+function renderInsightSingle(user, periodTxns, income, expense) {
+  const { tone, text } = generateInsight(user, periodTxns, income, expense);
+  applyInsightStyle(document.getElementById('insightBox'), document.getElementById('insightIcon'), document.getElementById('insightText'), tone, text);
+}
+function applyInsightStyle(box, iconEl, textEl, tone, text) {
+  const styles = {
+    positive: { bg:'var(--income-light)', color:'var(--income)', icon:'sparkles' },
+    warning: { bg:'var(--expense-light)', color:'var(--expense)', icon:'alert-triangle' },
+    neutral: { bg:'var(--accent-light)', color:'#96721A', icon:'lightbulb' }
+  };
+  const s = styles[tone];
+  box.style.background = s.bg; box.style.color = s.color;
+  iconEl.setAttribute('data-lucide', s.icon);
+  textEl.textContent = text;
+}
+
+function renderChartSingle(userId, periodTxns) {
+  if (state.period.mode === 'year') {
+    document.getElementById('chartTitle').textContent = 'แนวโน้มรายเดือนตลอดปี';
+    document.getElementById('chartSubtitle').textContent = 'เปรียบเทียบรายรับ (เขียว) กับรายจ่าย (แดง) แต่ละเดือน';
+    document.getElementById('donutWrap').classList.add('hidden');
+    document.getElementById('chartEmpty').classList.add('hidden');
+    document.getElementById('barWrap').classList.remove('hidden');
+    renderYearBarChart(userId);
+  } else {
+    document.getElementById('chartTitle').textContent = 'สัดส่วนรายจ่ายตามหมวดหมู่';
+    document.getElementById('chartSubtitle').textContent = state.period.mode==='day' ? 'ของวันนี้' : 'ของเดือนนี้';
+    document.getElementById('barWrap').classList.add('hidden');
+    renderDonutChart(periodTxns);
+  }
+}
+
+function renderDonutChart(periodTxns) {
+  const expenseTxns = periodTxns.filter(t => t.Type==='expense');
+  const byCat = {};
+  expenseTxns.forEach(t => { byCat[t.CategoryID] = (byCat[t.CategoryID]||0) + Number(t.Amount); });
+  const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const total = entries.reduce((s,[,v])=>s+v,0);
+
+  if (entries.length === 0) {
+    document.getElementById('donutWrap').classList.add('hidden');
+    document.getElementById('chartEmpty').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('donutWrap').classList.remove('hidden');
+  document.getElementById('chartEmpty').classList.add('hidden');
+
+  const labels = entries.map(([id]) => (state.categories.find(c=>c.ID===id)||{}).Name || 'อื่นๆ');
+  const colors = entries.map(([id]) => (state.categories.find(c=>c.ID===id)||{}).Color || '#999');
+  const data = entries.map(([,v]) => v);
+
+  const ctx = document.getElementById('categoryChart').getContext('2d');
+  if (state.donutChart) state.donutChart.destroy();
+  state.donutChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#FFFFFF' }] },
+    options: { cutout: '68%', plugins: { legend: { display:false }, tooltip: { callbacks: { label: (c) => c.label + ': ' + fmtMoney(c.raw) } } } }
+  });
+  document.getElementById('chartLegend').innerHTML = entries.map(([id, val]) => {
+    const c = state.categories.find(c=>c.ID===id);
+    const pct = Math.round(val/total*100);
+    return `<div class="flex items-center gap-2 text-xs">
+      <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:${c?c.Color:'#999'}"></span>
+      <span class="flex-1 truncate">${escapeHtml(c?c.Name:'อื่นๆ')}</span>
+      <span class="font-num text-[var(--ink-soft)]">${pct}%</span>
+      <span class="font-num font-semibold w-20 text-right">${fmtMoney(val)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderYearBarChart(userId) {
+  const year = state.period.date.getFullYear();
+  const incomeByMonth = new Array(12).fill(0), expenseByMonth = new Array(12).fill(0);
+  state.transactions.filter(t => t.UserID === userId).forEach(t => {
+    const td = new Date(t.Date);
+    if (td.getFullYear() !== year) return;
+    if (t.Type === 'income') incomeByMonth[td.getMonth()] += Number(t.Amount);
+    else expenseByMonth[td.getMonth()] += Number(t.Amount);
+  });
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  if (state.trendChart) state.trendChart.destroy();
+  state.trendChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: THAI_MONTHS_SHORT,
+      datasets: [
+        { label: 'รายรับ', data: incomeByMonth, backgroundColor: '#20BF6B', borderRadius: 4 },
+        { label: 'รายจ่าย', data: expenseByMonth, backgroundColor: '#FF6B6B', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position:'bottom', labels: { boxWidth:10, font:{size:10} } }, tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtMoney(c.raw) } } },
+      scales: { y: { ticks: { font:{size:9}, callback:(v)=>'฿'+v } }, x: { ticks: { font:{size:9} } } }
+    }
+  });
+}
+
+function renderTxnList(listId, emptyId, txns, showAllTag) {
+  const listEl = document.getElementById(listId), emptyEl = document.getElementById(emptyId);
+  if (txns.length === 0) { listEl.innerHTML = ''; listEl.classList.add('hidden'); emptyEl.classList.remove('hidden'); return; }
+  emptyEl.classList.add('hidden'); listEl.classList.remove('hidden');
+
+  let groups = {}, order = [];
+  txns.forEach(t => {
+    const td = new Date(t.Date);
+    const key = state.period.mode === 'year' ? `${td.getFullYear()}-${td.getMonth()}` : dateKey(td);
+    if (!groups[key]) { groups[key] = []; order.push(key); }
+    groups[key].push(t);
+  });
+
+  listEl.innerHTML = order.map(key => {
+    const items = groups[key];
+    const gIncome = sumIncome(items), gExpense = sumExpense(items);
+    const td = new Date(items[0].Date);
+    const groupLabel = state.period.mode === 'year' ? THAI_MONTHS[td.getMonth()] : `${td.getDate()} ${THAI_MONTHS_SHORT[td.getMonth()]} ${beYear(td.getFullYear())} · ${weekdayThai(td)}`;
+
+    const rows = items.map(t => {
+      const cat = state.categories.find(c => c.ID === t.CategoryID);
+      const user = state.users.find(u => u.id === t.UserID);
+      return `<button onclick='openEditTxn(${JSON.stringify(t).replace(/'/g,"&#39;")})' class="tap-scale w-full flex items-center gap-3 py-2.5 px-2 rounded-2xl text-left hover:bg-[var(--bg)]">
+        <div class="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 icon-sw" style="background:${cat?cat.Color+'22':'#eee'}; color:${cat?cat.Color:'#999'}">
+          <span class="w-4 h-4" data-lucide="${cat?cat.Icon:'circle'}"></span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium truncate">${escapeHtml(cat?cat.Name:'ไม่ระบุหมวดหมู่')}</div>
+          <div class="text-[11px] text-[var(--ink-faint)] truncate">${t.Note ? escapeHtml(t.Note)+' · ' : ''}${showAllTag && user ? escapeHtml(user.name) : ''}</div>
+        </div>
+        <div class="font-num font-semibold text-sm shrink-0" style="color:${t.Type==='income'?'var(--income)':'var(--expense)'}">${t.Type==='income'?'+':'-'}${fmtMoney(Number(t.Amount))}</div>
+      </button>`;
+    }).join('');
+
+    return `<div class="pt-3">
+      <div class="flex items-center justify-between px-2 pb-1">
+        <span class="text-[11px] font-semibold text-[var(--ink-soft)] uppercase tracking-wide">${groupLabel}</span>
+        <span class="text-[10px] font-num text-[var(--ink-faint)]">${gIncome>0?'+'+fmtMoney(gIncome)+' ':''}${gExpense>0?'-'+fmtMoney(gExpense):''}</span>
+      </div>
+      ${rows}
+    </div>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+/* ========================= ALL MEMBERS VIEW (never merges numbers) ========================= */
+function renderAllMembersView() {
+  const periodTxns = getPeriodTransactions();
+  const cardsWrap = document.getElementById('memberCards');
+  cardsWrap.innerHTML = state.users.map(u => {
+    const uTxns = periodTxns.filter(t => t.UserID === u.id);
+    const income = sumIncome(uTxns), expense = sumExpense(uTxns), net = income - expense;
+    const { tone, text } = generateInsight(u, uTxns, income, expense);
+    const toneColor = tone==='positive' ? 'var(--income)' : tone==='warning' ? 'var(--expense)' : '#96721A';
+    return `<button onclick="setViewUser('${u.id}')" class="tap-scale w-full text-left bg-[var(--card)] rounded-3xl soft-shadow p-4 fade-in">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl font-display font-bold text-white shrink-0" style="background:${u.color}">${avatarContent(u)}</div>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sm truncate">${escapeHtml(u.name)}</div>
+          <div class="text-[11px] font-num" style="color:var(--primary-dark)">สุทธิ ${fmtMoney(net)}</div>
+        </div>
+        <span class="icon-sw w-4 h-4 text-[var(--ink-faint)] shrink-0" data-lucide="chevron-right"></span>
+      </div>
+      <div class="grid grid-cols-2 gap-2 mb-2">
+        <div class="rounded-xl px-2.5 py-1.5" style="background:var(--income-light)">
+          <div class="text-[10px]" style="color:var(--income)">รายรับ</div>
+          <div class="font-num text-sm font-bold" style="color:var(--income)">${fmtMoney(income)}</div>
+        </div>
+        <div class="rounded-xl px-2.5 py-1.5" style="background:var(--expense-light)">
+          <div class="text-[10px]" style="color:var(--expense)">รายจ่าย</div>
+          <div class="font-num text-sm font-bold" style="color:var(--expense)">${fmtMoney(expense)}</div>
+        </div>
+      </div>
+      <p class="text-[11px] leading-relaxed" style="color:${toneColor}">${escapeHtml(text)}</p>
+    </button>`;
+  }).join('') || `<p class="text-center text-xs text-[var(--ink-faint)] py-6">ยังไม่มีสมาชิก</p>`;
+
+  renderTxnList('allTxnList', 'allTxnListEmpty', periodTxns, true);
+  lucide.createIcons();
+}
+
+/* ========================= TRANSACTION MODAL ========================= */
+function openTxnModal() {
+  document.getElementById('txnModalTitle').textContent = 'เพิ่มรายการ';
+  document.getElementById('txnId').value = ''; document.getElementById('txnAmount').value = ''; document.getElementById('txnNote').value = '';
+  document.getElementById('txnDate').valueAsDate = state.period.mode === 'year' ? new Date() : new Date(state.period.date);
+  document.getElementById('txnDeleteBtn').classList.add('hidden');
+  populateUserSelect();
+  document.getElementById('txnUser').value = (state.viewUserId && state.viewUserId !== 'ALL') ? state.viewUserId : state.currentUser.id;
+  setTxnType('expense');
+  document.getElementById('txnModal').classList.remove('hidden');
+}
+function openEditTxn(t) {
+  document.getElementById('txnModalTitle').textContent = 'แก้ไขรายการ';
+  document.getElementById('txnId').value = t.ID; document.getElementById('txnAmount').value = t.Amount; document.getElementById('txnNote').value = t.Note || '';
+  document.getElementById('txnDate').value = new Date(t.Date).toISOString().slice(0,10);
+  document.getElementById('txnDeleteBtn').classList.remove('hidden');
+  populateUserSelect();
+  document.getElementById('txnUser').value = t.UserID;
+  setTxnType(t.Type, t.CategoryID);
+  document.getElementById('txnModal').classList.remove('hidden');
+}
+function closeTxnModal() { document.getElementById('txnModal').classList.add('hidden'); }
+function populateUserSelect() { document.getElementById('txnUser').innerHTML = state.users.map(u => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join(''); }
+
+function setTxnType(type, presetCatId) {
+  state.txnType = type;
+  const expBtn = document.getElementById('typeExpenseBtn'), incBtn = document.getElementById('typeIncomeBtn');
+  if (type === 'expense') { expBtn.style.background = 'var(--expense)'; expBtn.style.color = '#fff'; incBtn.style.background = 'transparent'; incBtn.style.color = 'var(--ink-soft)'; }
+  else { incBtn.style.background = 'var(--income)'; incBtn.style.color = '#fff'; expBtn.style.background = 'transparent'; expBtn.style.color = 'var(--ink-soft)'; }
+  const cats = state.categories.filter(c => c.Type === type);
+  state.selectedCategoryId = presetCatId || (cats[0] ? cats[0].ID : null);
+  renderTxnCategoryGrid(cats);
+}
+function renderTxnCategoryGrid(cats) {
+  document.getElementById('txnCategoryGrid').innerHTML = cats.map(c => {
+    const active = c.ID === state.selectedCategoryId;
+    return `<button type="button" onclick="state.selectedCategoryId='${c.ID}'; renderTxnCategoryGrid(${JSON.stringify(cats).replace(/"/g,'&quot;')});" class="tap-scale flex flex-col items-center gap-1 py-2.5 rounded-2xl" style="background:${active ? c.Color+'22' : 'var(--bg)'}; ${active?'box-shadow:inset 0 0 0 1.5px '+c.Color+';':''}">
+      <span class="icon-sw w-4 h-4" data-lucide="${c.Icon}" style="color:${c.Color}"></span>
+      <span class="text-[10px] leading-tight text-center px-1">${escapeHtml(c.Name)}</span>
+    </button>`;
+  }).join('');
+  lucide.createIcons();
+}
+
+async function saveTxn() {
+  const id = document.getElementById('txnId').value;
+  const amount = parseFloat(document.getElementById('txnAmount').value);
+  if (!amount || amount <= 0) { showToast('กรุณาระบุจำนวนเงิน', 'var(--expense)'); return; }
+  if (!state.selectedCategoryId) { showToast('กรุณาเลือกหมวดหมู่', 'var(--expense)'); return; }
+  const payload = { action: id ? 'updateTransaction' : 'addTransaction', id, date: document.getElementById('txnDate').value, type: state.txnType, categoryId: state.selectedCategoryId, amount, note: document.getElementById('txnNote').value.trim(), userId: document.getElementById('txnUser').value };
+  try {
+    const res = await apiPost(payload);
+    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
+    closeTxnModal(); await refreshFromServer(true); renderAll();
+    showToast('บันทึกรายการแล้ว', 'var(--primary-dark)');
+  } catch (e) { showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'var(--expense)'); }
+}
+function deleteCurrentTxn() {
+  const id = document.getElementById('txnId').value;
+  confirmAction('ลบรายการนี้ใช่หรือไม่?', async () => {
+    const res = await apiPost({ action: 'deleteTransaction', id });
+    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
+    closeTxnModal(); await refreshFromServer(true); renderAll();
+    showToast('ลบรายการแล้ว', 'var(--primary-dark)');
+  });
+}
+
+/* ========================= SETTINGS ========================= */
+function openSettings() { setSettingsTab('categories'); document.getElementById('settingsModal').classList.remove('hidden'); }
+function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+function setSettingsTab(tab) {
+  state.settingsTab = tab;
+  ['categories','users','backup'].forEach(t => {
+    document.getElementById('settings'+cap(t)).classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById('tab'+(t==='categories'?'Cat':t==='users'?'User':'Backup')+'Btn');
+    btn.style.background = t === tab ? 'var(--primary)' : 'var(--bg)';
+    btn.style.color = t === tab ? '#fff' : 'var(--ink-soft)';
+  });
+  if (tab === 'categories') renderSettingsCategories();
+  if (tab === 'users') renderSettingsUsers();
+}
+function cap(s) { return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function renderSettingsCategories() {
+  ['expense','income'].forEach(type => {
+    const cats = state.categories.filter(c => c.Type === type);
+    document.getElementById('catList_'+type).innerHTML = cats.map(c => `
+      <button onclick='openCategoryForm(${JSON.stringify(c).replace(/'/g,"&#39;")})' class="tap-scale w-full flex items-center gap-3 py-2 px-2 rounded-2xl hover:bg-[var(--bg)]">
+        <div class="w-9 h-9 rounded-xl flex items-center justify-center icon-sw" style="background:${c.Color}22; color:${c.Color}"><span class="w-4 h-4" data-lucide="${c.Icon}"></span></div>
+        <span class="text-sm flex-1 text-left">${escapeHtml(c.Name)}</span>
+        <span class="icon-sw w-4 h-4 text-[var(--ink-faint)]" data-lucide="chevron-right"></span>
+      </button>`).join('') || '<p class="text-xs text-[var(--ink-faint)] px-2">ยังไม่มีหมวดหมู่</p>';
+  });
+  lucide.createIcons();
+}
+function renderSettingsUsers() {
+  document.getElementById('userList').innerHTML = state.users.map(u => `
+    <button onclick='openEditUserForm(${JSON.stringify(u).replace(/'/g,"&#39;")})' class="tap-scale w-full flex items-center gap-3 py-2 px-2 rounded-2xl hover:bg-[var(--bg)]">
+      <div class="w-9 h-9 rounded-xl flex items-center justify-center font-display font-bold text-sm text-white" style="background:${u.color}">${avatarContent(u)}</div>
+      <div class="flex-1 text-left min-w-0">
+        <div class="text-sm truncate">${escapeHtml(u.name)}</div>
+        ${u.monthlyLimit ? `<div class="text-[10px] text-[var(--ink-faint)] font-num">ลิมิต ${fmtMoney(u.monthlyLimit)}/เดือน</div>` : ''}
+      </div>
+      <span class="icon-sw w-4 h-4 text-[var(--ink-faint)]" data-lucide="chevron-right"></span>
+    </button>`).join('');
+  lucide.createIcons();
+}
+
+function openCategoryForm(c) {
+  document.getElementById('catFormTitle').textContent = c ? 'แก้ไขหมวดหมู่' : 'เพิ่มหมวดหมู่';
+  document.getElementById('catId').value = c ? c.ID : '';
+  document.getElementById('catName').value = c ? c.Name : '';
+  document.getElementById('catDeleteBtn').classList.toggle('hidden', !c);
+  state.catFormColor = c ? c.Color : PALETTE[state.categories.length % PALETTE.length];
+  state.catFormIcon = c ? c.Icon : CAT_ICONS[0];
+  setCatFormType(c ? c.Type : 'expense');
+  renderCatColorPicker(); renderCatIconPicker();
+  document.getElementById('categoryFormModal').classList.remove('hidden');
+}
+function closeCategoryForm() { document.getElementById('categoryFormModal').classList.add('hidden'); }
+function setCatFormType(type) {
+  state.catFormType = type;
+  const e = document.getElementById('catTypeExpenseBtn'), i = document.getElementById('catTypeIncomeBtn');
+  e.style.background = type==='expense' ? 'var(--expense)' : 'transparent'; e.style.color = type==='expense' ? '#fff' : 'var(--ink-soft)';
+  i.style.background = type==='income' ? 'var(--income)' : 'transparent'; i.style.color = type==='income' ? '#fff' : 'var(--ink-soft)';
+}
+function renderCatColorPicker() {
+  document.getElementById('catColorPicker').innerHTML = PALETTE.map(c => `
+    <button type="button" onclick="state.catFormColor='${c}'; renderCatColorPicker();" class="tap-scale w-7 h-7 rounded-full" style="background:${c}; ${state.catFormColor===c?'box-shadow:0 0 0 2px var(--card),0 0 0 3.5px var(--ink);':''}"></button>
+  `).join('');
+}
+function renderCatIconPicker() {
+  document.getElementById('catIconPicker').innerHTML = CAT_ICONS.map(ic => `
+    <button type="button" onclick="state.catFormIcon='${ic}'; renderCatIconPicker();" class="tap-scale w-9 h-9 rounded-xl flex items-center justify-center icon-sw" style="background:${state.catFormIcon===ic?'var(--primary)':'var(--bg)'}; color:${state.catFormIcon===ic?'#fff':'var(--ink-soft)'}"><span class="w-4 h-4" data-lucide="${ic}"></span></button>
+  `).join('');
+  lucide.createIcons();
+}
+async function saveCategory() {
+  const id = document.getElementById('catId').value;
+  const name = document.getElementById('catName').value.trim();
+  if (!name) { showToast('กรุณาระบุชื่อหมวดหมู่', 'var(--expense)'); return; }
+  const payload = { action: id ? 'updateCategory' : 'addCategory', id, name, type: state.catFormType, color: state.catFormColor, icon: state.catFormIcon };
+  try {
+    const res = await apiPost(payload);
+    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
+    closeCategoryForm(); await refreshFromServer(true); renderSettingsCategories(); renderAll();
+    showToast('บันทึกหมวดหมู่แล้ว', 'var(--primary-dark)');
+  } catch (e) { showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ', 'var(--expense)'); }
+}
+function deleteCurrentCategory() {
+  const id = document.getElementById('catId').value;
+  confirmAction('ลบหมวดหมู่นี้ใช่หรือไม่?', async () => {
+    const res = await apiPost({ action: 'deleteCategory', id });
+    if (!res.success) { showToast(res.error, 'var(--expense)'); return; }
+    closeCategoryForm(); await refreshFromServer(true); renderSettingsCategories(); renderAll();
+    showToast('ลบหมวดหมู่แล้ว', 'var(--primary-dark)');
+  });
+}
+
+function exportBackup() {
+  const data = { exportedAt: new Date().toISOString(), users: state.users, categories: state.categories, transactions: state.transactions };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `family-ledger-backup-${dateKey(new Date())}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+async function reloadFromServer() { await refreshFromServer(false); renderAll(); renderSettingsCategories(); renderSettingsUsers(); }
+
+function confirmAction(text, onConfirm) {
+  document.getElementById('confirmText').textContent = text;
+  const btn = document.getElementById('confirmActionBtn');
+  const newBtn = btn.cloneNode(true); btn.parentNode.replaceChild(newBtn, btn);
+  newBtn.addEventListener('click', () => { closeConfirm(); onConfirm(); });
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); }
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.background = color || 'var(--primary)';
+  t.classList.remove('hidden');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+}
+</script>
+</body>
+</html>
