@@ -423,11 +423,11 @@
   </div>
 </div>
 
-<div id="toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[80] px-4 py-2.5 rounded-full text-white text-xs font-medium shadow-lg"></div>
+<div id="toast" class="hidden fixed top-4 left-1/2 -translate-x-1/2 z-[80] px-4 py-2.5 rounded-2xl text-white text-xs font-medium shadow-lg max-w-[90vw] text-center" style="white-space:normal;"></div>
 
 <script>
 /* CONFIG — ใส่ Web App URL ของ Google Apps Script ที่นี่หลัง Deploy เสร็จ */
-const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycby8B97dVkbGlErSeyqNQFLAaVTqvbel4Ian209TTujkGZaluuGTgpAgjgGSeJSJuHJIqg/exec' };
+const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbx6JnF8Onxly2AjV_actIPp-YL1Icyjruk4LYG9ncOjt-U_kHl9KqwjtwCLgohjglOw6A/exec' };
 
 let state = {
   users: [], categories: [], transactions: [],
@@ -622,23 +622,34 @@ function handlePhotoSelect(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
   if (!file.type.startsWith('image/')) { showToast('กรุณาเลือกไฟล์รูปภาพ', 'var(--expense)'); return; }
+  if (file.size > 20 * 1024 * 1024) { showToast('ไฟล์รูปใหญ่เกินไป (เกิน 20MB) ลองเลือกรูปอื่น', 'var(--expense)'); return; }
+  showToast('กำลังเตรียมรูป...', 'var(--primary-dark)');
   const reader = new FileReader();
+  reader.onerror = () => showToast('อ่านไฟล์รูปไม่สำเร็จ ลองเลือกรูปอื่น', 'var(--expense)');
   reader.onload = (e) => {
     const img = new Image();
+    img.onerror = () => {
+      showToast('แสดงรูปนี้ไม่ได้ (มือถือบางรุ่นถ่ายเป็นไฟล์ HEIC ที่เบราว์เซอร์อ่านไม่ได้) ลองเลือกรูปจากอัลบั้มที่เป็น JPG/PNG หรือเปลี่ยนกล้องเป็นโหมด "เข้ากันได้มากที่สุด" ในตั้งค่ากล้องแล้วถ่ายใหม่', 'var(--expense)');
+    };
     img.onload = () => {
-      const size = 300;
-      const canvas = document.createElement('canvas');
-      canvas.width = size; canvas.height = size;
-      const ctx = canvas.getContext('2d');
-      const scale = Math.max(size / img.width, size / img.height);
-      const w = img.width * scale, h = img.height * scale;
-      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      state.userFormPhotoData = dataUrl.split(',')[1];
-      state.userFormPhotoMime = 'image/jpeg';
-      state.userFormRemovePhoto = false;
-      document.getElementById('removePhotoBtn').classList.remove('hidden');
-      updateAvatarPreview();
+      try {
+        const size = 300;
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        const scale = Math.max(size / img.width, size / img.height);
+        const w = img.width * scale, h = img.height * scale;
+        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        state.userFormPhotoData = dataUrl.split(',')[1];
+        state.userFormPhotoMime = 'image/jpeg';
+        state.userFormRemovePhoto = false;
+        document.getElementById('removePhotoBtn').classList.remove('hidden');
+        updateAvatarPreview();
+        showToast('เตรียมรูปพร้อมแล้ว กด "บันทึก" เพื่อยืนยัน', 'var(--primary-dark)');
+      } catch (err) {
+        showToast('ประมวลผลรูปไม่สำเร็จ ลองเลือกรูปอื่น', 'var(--expense)');
+      }
     };
     img.src = e.target.result;
   };
@@ -709,7 +720,7 @@ async function saveUser(btn) {
       chip.style.background = state.currentUser.color || '#2EC4B6'; chip.style.borderRadius = shapeRadius(state.currentUser.shape); chip.innerHTML = avatarInnerHTML(state.currentUser);
       renderSettingsUsers(); renderMemberTabs(); renderAll();
     }
-    showToast('บันทึกโปรไฟล์แล้ว', 'var(--primary-dark)');
+    showToast(res.photoError ? 'บันทึกโปรไฟล์แล้ว แต่รูปอัปโหลดไม่สำเร็จ: ' + res.photoError : 'บันทึกโปรไฟล์แล้ว', res.photoError ? 'var(--expense)' : 'var(--primary-dark)');
   } catch (e) { errEl.textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ'; errEl.classList.remove('hidden'); }
   setBtnLoading(btn, false);
 }
@@ -970,7 +981,7 @@ function renderYearBarChart(userId) {
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: { legend: { position:'bottom', labels: { boxWidth:10, font:{size:10} } }, tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtMoney(c.raw) } } },
-      scales: { y: { ticks: { font:{size:9}, callback:(v)=>'฿'+v } }, x: { ticks: { font:{size:9} } } }
+      scales: { y: { beginAtZero: true, ticks: { font:{size:9}, precision: 0, callback: (v) => fmtMoney(Math.round(v)) } }, x: { ticks: { font:{size:9} } } }
     }
   });
 }
@@ -1377,7 +1388,8 @@ function showToast(msg, color) {
   t.textContent = msg; t.style.background = color || 'var(--primary)';
   t.classList.remove('hidden');
   clearTimeout(window._toastTimer);
-  window._toastTimer = setTimeout(() => t.classList.add('hidden'), 2600);
+  const duration = msg && msg.length > 40 ? 5000 : 2600;
+  window._toastTimer = setTimeout(() => t.classList.add('hidden'), duration);
 }
 </script>
 </body>
