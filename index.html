@@ -427,7 +427,7 @@
 
 <script>
 /* CONFIG — ใส่ Web App URL ของ Google Apps Script ที่นี่หลัง Deploy เสร็จ */
-const CONFIG = { API_URL: 'https://script.google.com/macros/s/AKfycbx6JnF8Onxly2AjV_actIPp-YL1Icyjruk4LYG9ncOjt-U_kHl9KqwjtwCLgohjglOw6A/exec' };
+const CONFIG = { API_URL: '' };
 
 let state = {
   users: [], categories: [], transactions: [],
@@ -452,6 +452,15 @@ const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','ม�
 const THAI_MONTHS_SHORT = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('resize', handleViewportResize);
+window.addEventListener('orientationchange', handleViewportResize);
+function handleViewportResize() {
+  clearTimeout(window._resizeTimer);
+  window._resizeTimer = setTimeout(() => {
+    if (state.donutChart) state.donutChart.resize();
+    if (state.trendChart) state.trendChart.resize();
+  }, 150);
+}
 
 async function init() {
   if (!CONFIG.API_URL) document.getElementById('configBanner').classList.remove('hidden');
@@ -775,6 +784,12 @@ function getPrevPeriodTransactionsFor(userId) {
 function sumIncome(list) { return list.filter(t=>t.Type==='income').reduce((s,t)=>s+Number(t.Amount),0); }
 function sumExpense(list) { return list.filter(t=>t.Type==='expense').reduce((s,t)=>s+Number(t.Amount),0); }
 function fmtMoney(n) { const sign = n < 0 ? '-' : ''; return sign + '฿' + Math.abs(n).toLocaleString('th-TH', {maximumFractionDigits:0}); }
+function compactMoney(n) {
+  const sign = n < 0 ? '-' : ''; const abs = Math.round(Math.abs(n));
+  if (abs >= 1000000) return sign + '฿' + (abs/1000000).toFixed(abs%1000000===0?0:1) + 'M';
+  if (abs >= 1000) return sign + '฿' + (abs/1000).toFixed(abs%1000===0?0:1) + 'k';
+  return sign + '฿' + abs;
+}
 function escapeHtml(s) { return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function weekdayThai(d) { return ['อา.','จ.','อ.','พ.','พฤ.','ศ.','ส.'][d.getDay()]; }
 
@@ -980,10 +995,13 @@ function renderYearBarChart(userId) {
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      layout: { padding: { left: 2 } },
       plugins: { legend: { position:'bottom', labels: { boxWidth:10, font:{size:10} } }, tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + fmtMoney(c.raw) } } },
-      scales: { y: { beginAtZero: true, ticks: { font:{size:9}, precision: 0, callback: (v) => fmtMoney(Math.round(v)) } }, x: { ticks: { font:{size:9} } } }
+      scales: { y: { beginAtZero: true, ticks: { font:{size:9}, precision: 0, maxTicksLimit: 5, callback: (v) => compactMoney(v) } }, x: { ticks: { font:{size:9} } } }
     }
   });
+  // บังคับคำนวณขนาด canvas ใหม่หลังเลย์เอาต์นิ่งแล้ว กันป้ายกำกับแกนถูกตัดบนมือถือบางรุ่น
+  requestAnimationFrame(() => { if (state.trendChart) state.trendChart.resize(); });
 }
 
 function renderTxnList(listId, emptyId, txns, showAllTag) {
